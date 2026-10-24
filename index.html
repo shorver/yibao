@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>蚂蚁哥医保查询 - 2027年度城乡居民医保征缴信息</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="icon/icon_32.png?v=1.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="icon/icon_180.png?v=1.0.0">
+  <link rel="stylesheet" href="style.css?v=1.0.0">
+</head>
+<body>
+  <header>
+    <h1>蚂蚁哥医保查询</h1>
+    <div class="meta" id="meta"></div>
+    <p class="tip">2027年度城乡居民医保征缴信息汇总：各省/市/区/县缴费标准、大学生医保标准、各地医保与税务咨询电话、线上线下缴费方式。</p>
+    <p class="disclaimer">本工具为便民信息汇总，非官方经办渠道，不提供参保登记、报销申请、账户查询等医保经办服务，具体以当地医保局通告为准。</p>
+  </header>
+
+  <div class="wrap">
+    <section>
+      <div class="h2"><span class="dot"></span>使用方法（三步）</div>
+      <div class="how">
+        <div class="how-item"><span class="step">1</span><div><b>查地区</b><p>点上方省份标签，或在搜索框输入城市 / 区 / 县名（如“浦江”“东城区”），点搜索结果，即可看到当地缴费标准、咨询电话、缴费时间与方式。</p></div></div>
+        <div class="how-item"><span class="step">2</span><div><b>查大学</b><p>切换到「查大学」页签，输入学校名称（原校名也能搜），查该校在校学生医保缴费标准。</p></div></div>
+        <div class="how-item"><span class="step">3</span><div><b>打电话</b><p>结果里的电话号码可直接点击拨打。拨打外地电话请加区号（如 0579-12393）。有疑问以当地医保局最新通告为准。</p></div></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="h2"><span class="dot"></span>全国通用缴费方式</div>
+      <div class="nat-grid" id="national"></div>
+    </section>
+
+    <section>
+      <div class="h2"><span class="dot"></span>按省份快速查</div>
+      <div class="prov-bar" id="provBar"></div>
+    </section>
+
+    <div class="tabs">
+      <div class="tab active" id="tabRegion">查地区（省/市/区/县）</div>
+      <div class="tab" id="tabUni">查大学（大学生医保）</div>
+    </div>
+
+    <section id="regionPanel">
+      <div class="h2"><span class="dot"></span>搜索城市 / 区 / 县</div>
+      <div class="search">
+        <input id="q" type="search" placeholder="如：浦江、金华、杭州、东城区、奉节…" autocomplete="off">
+        <button id="go">搜索</button>
+      </div>
+      <div class="cand" id="cand"></div>
+      <div id="detail"></div>
+    </section>
+
+    <section id="uniPanel" style="display:none">
+      <div class="h2"><span class="dot"></span>搜索高校（查该校大学生医保）</div>
+      <div class="search">
+        <input id="uq" type="search" placeholder="如：浙江大学、深圳职业技术学院、黄河水利职业技术学院…" autocomplete="off">
+        <button id="ugo">搜索</button>
+      </div>
+      <div class="cand" id="ucand"></div>
+      <div id="udetail"></div>
+    </section>
+  </div>
+
+  <footer class="foot">
+    <p>数据来源：各地医保局、税务局公开发布的征缴通告与政策文件（整理截至 <span id="footUpdate"></span>）。</p>
+    <p>本工具为便民信息汇总，非官方经办渠道，不提供参保登记、报销申请、账户查询等医保经办服务，具体以当地医保局通告为准。</p>
+    <div class="about">
+      <p>创建时间：<span id="footCreate"></span> ｜ 版本：<span id="footVer"></span> ｜ 数据更新：<span id="footUpdate2"></span></p>
+      <p>制作人：浦江蚂蚁哥（<a href="mailto:shorver@163.com">shorver@163.com</a>）</p>
+    </div>
+    <p>蚂蚁哥医保查询 ｜ 全国医保服务热线 12393 ｜ 税务热线 12366</p>
+  </footer>
+
+  <script src="data.js?v=1.0.0"></script>
+  <script src="universities.js?v=1.0.0"></script>
+  <script src="aliases.js?v=1.0.0"></script>
+  <script src="uni_fee.js?v=1.0.0"></script>
+  <script src="app.js?v=1.0.0"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# 本地工作文件，不入库
+.workbuddy/
+eol_imgs/
+miniapp_notes.md
+
+# 下载失败的错误页残留
+moe_2024.xls
+moe_2024b.xls
+
+# 系统杂项
+.DS_Store
+Thumbs.db
+desktop.ini

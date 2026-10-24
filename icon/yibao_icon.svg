@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#075a9c"/>
+      <stop offset="1" stop-color="#0a6ebd"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.62">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ant" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a92e0"/>
+      <stop offset="1" stop-color="#0a5a9e"/>
+    </linearGradient>
+    <linearGradient id="belly" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7cc4f5"/>
+      <stop offset="1" stop-color="#3f95d8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景：蓝色渐变圆角方底 -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1024" height="1024" rx="224" fill="url(#glow)"/>
+
+  <!-- 装饰星点 -->
+  <g fill="#ffffff">
+    <path d="M272 180 Q276 202 298 206 Q276 210 272 232 Q268 210 246 206 Q268 202 272 180 Z" opacity="0.75"/>
+    <path d="M792 650 Q795 665 810 668 Q795 671 792 686 Q789 671 774 668 Q795 665 792 650 Z" opacity="0.5"/>
+  </g>
+
+  <!-- 医疗盾牌（投影 + 白底） -->
+  <path d="M512 196 C610 196 706 218 764 266 L764 528 C764 650 660 726 512 786 C364 726 260 650 260 528 L260 266 C318 218 414 196 512 196 Z"
+        transform="translate(0,16)" fill="#053f6e" opacity="0.28"/>
+  <path d="M512 196 C610 196 706 218 764 266 L764 528 C764 650 660 726 512 786 C364 726 260 650 260 528 L260 266 C318 218 414 196 512 196 Z"
+        fill="#ffffff" stroke="#d3e6f8" stroke-width="6"/>
+  <!-- 盾牌内淡印十字 -->
+  <g fill="#0a6ebd" opacity="0.10">
+    <rect x="488" y="300" width="48" height="360" rx="12"/>
+    <rect x="332" y="456" width="360" height="48" rx="12"/>
+  </g>
+
+  <!-- 蚂蚁六条腿 -->
+  <g stroke="#075a9c" stroke-width="15" stroke-linecap="round" fill="none">
+    <path d="M436 604 Q386 642 356 692"/>
+    <path d="M446 642 Q406 680 384 722"/>
+    <path d="M466 676 Q446 700 436 726"/>
+    <path d="M588 604 Q638 642 668 692"/>
+    <path d="M578 642 Q618 680 640 722"/>
+    <path d="M558 676 Q578 700 588 726"/>
+  </g>
+
+  <!-- 触角 -->
+  <g stroke="#0a5a9e" stroke-width="13" stroke-linecap="round" fill="none">
+    <path d="M462 240 C436 190 410 158 382 142"/>
+    <path d="M562 240 C588 190 614 158 642 142"/>
+  </g>
+  <circle cx="378" cy="134" r="17" fill="#0a5a9e"/>
+  <circle cx="646" cy="134" r="17" fill="#0a5a9e"/>
+
+  <!-- 左臂 -->
+  <ellipse cx="382" cy="482" rx="24" ry="50" transform="rotate(22 382 482)" fill="#0e6fbf"/>
+  <circle cx="380" cy="434" r="23" fill="#2a92e0"/>
+  <!-- 右臂（挥手） -->
+  <ellipse cx="642" cy="470" rx="26" ry="54" transform="rotate(-28 642 470)" fill="#0e6fbf"/>
+  <circle cx="644" cy="418" r="25" fill="#2a92e0"/>
+
+  <!-- 身体：腹 → 胸 → 头 -->
+  <ellipse cx="512" cy="566" rx="118" ry="132" fill="url(#ant)"/>
+  <ellipse cx="512" cy="576" rx="72" ry="92" fill="url(#belly)" opacity="0.55"/>
+  <ellipse cx="512" cy="436" rx="84" ry="78" fill="url(#ant)"/>
+  <circle cx="512" cy="312" r="95" fill="url(#ant)"/>
+
+  <!-- 腮红 -->
+  <circle cx="446" cy="348" r="15" fill="#8fd0ff" opacity="0.85"/>
+  <circle cx="578" cy="348" r="15" fill="#8fd0ff" opacity="0.85"/>
+
+  <!-- 眼镜（专业/查询感） -->
+  <circle cx="468" cy="308" r="41" fill="#ffffff" opacity="0.35"/>
+  <circle cx="556" cy="308" r="41" fill="#ffffff" opacity="0.35"/>
+  <circle cx="468" cy="308" r="41" fill="none" stroke="#ffffff" stroke-width="11"/>
+  <circle cx="556" cy="308" r="41" fill="none" stroke="#ffffff" stroke-width="11"/>
+  <path d="M507 302 Q512 294 517 302" fill="none" stroke="#ffffff" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="470" cy="306" r="13" fill="#073a63"/>
+  <circle cx="554" cy="306" r="13" fill="#073a63"/>
+  <circle cx="466" cy="302" r="4.5" fill="#ffffff"/>
+  <circle cx="550" cy="302" r="4.5" fill="#ffffff"/>
+
+  <!-- 微笑 -->
+  <path d="M488 372 Q512 396 536 372" fill="none" stroke="#ffffff" stroke-width="9" stroke-linecap="round"/>
+
+  <!-- 放大镜（镜片内为医疗十字，表"查询"） -->
+  <g transform="translate(722,296) rotate(-45)">
+    <rect x="84" y="-25" width="152" height="50" rx="25" fill="#0a5a9e"/>
+    <circle cx="0" cy="0" r="106" fill="#ffffff" opacity="0.94"/>
+    <circle cx="0" cy="0" r="106" fill="none" stroke="#0a6ebd" stroke-width="15"/>
+    <g fill="#0a6ebd">
+      <rect x="-16" y="-56" width="32" height="112" rx="9"/>
+      <rect x="-56" y="-16" width="112" height="32" rx="9"/>
+    </g>
+    <ellipse cx="-42" cy="-52" rx="26" ry="14" transform="rotate(-38 -42 -52)" fill="#ffffff" opacity="0.85"/>
+  </g>
+</svg>

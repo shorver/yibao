@@ -41,3 +41,10 @@ python -m http.server 8000
 
 v1.0.0（2026-10-24 创建）
 制作人：浦江蚂蚁哥 shorver@163.com
+
+## 代码仓库
+
+- Gitee：https://gitee.com/shorver/yi-bao
+- GitCode：https://gitcode.net/shorver/yibao
+- AtomGit：https://atomgit.com/shorver/yibao
+- CNB：https://cnb.cool/shorver/yibao

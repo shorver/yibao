@@ -13,7 +13,7 @@ examples_en:
   - "How much is residents medical insurance in Jinhua for 2027"
   - "What is the medical insurance hotline for Pujiang County"
   - "How do Zhejiang University students pay medical insurance"
-version: 1.0.0
+version: 1.0.3
 author: 浦江蚂蚁哥
 agent_created: true
 ---

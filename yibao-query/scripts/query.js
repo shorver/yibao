@@ -42,7 +42,7 @@ function loadBundle() {
     }
   }
   const bundle = Object.assign(
-    loadVars('data.js', ['META', 'NATIONAL', 'ADMIN', 'REAL']),
+    loadVars('data.js', ['META', 'NATIONAL', 'ADMIN', 'REAL', 'SUBSIDY_DEFAULT']),
     loadVars('universities.js', ['UNIVERSITIES']),
     loadVars('aliases.js', ['ALIASES']),
     loadVars('uni_fee.js', ['UNI_FEE'])
@@ -53,6 +53,7 @@ function loadBundle() {
 const { bundle: B, src: BUNDLE_SRC } = loadBundle();
 const META = B.META, NATIONAL = B.NATIONAL, ADMIN = B.ADMIN, REAL = B.REAL;
 const UNIVERSITIES = B.UNIVERSITIES, ALIASES = B.ALIASES, UNI_FEE = B.UNI_FEE;
+const SUBSIDY_DEFAULT = B.SUBSIDY_DEFAULT || '特困人员、低保对象、低保边缘家庭成员、重度残疾人、孤儿、事实无人抚养儿童等困难群众参加城乡居民医保，其个人缴费部分通常由医疗救助资金或财政给予全额或定额资助（即个人免缴或少缴）；具体资助对象范围与个人缴费标准由各地医保、民政部门确定，以当地最新通告为准。';
 
 const YEAR = META.year || '2027年度';
 
@@ -130,6 +131,24 @@ function field(label, val) {
   if (!val) return '';
   return label + '：' + val + '\n';
 }
+
+// 资助参保对象：沿 自身→市→省 继承，命中即用，否则用全国默认说明
+function subsidyOf(names) {
+  for (const n of names) { if (REAL[n] && REAL[n].subsidy) return REAL[n].subsidy; }
+  return SUBSIDY_DEFAULT;
+}
+function regionSubsidy(res) {
+  const chain = [];
+  if (res.mode === 'direct') {
+    chain.push(res.key);
+    const info = locMap[res.key];
+    if (info && info.province) chain.push(info.province);
+  } else {
+    if (res.city) chain.push(res.city);
+    if (res.province) chain.push(res.province);
+  }
+  return subsidyOf(chain);
+}
 function typeLabel(t) {
   return { '': '(本科)', benke: '(本科)', vocational: '(高职/专科)', chengren: '(成人高校)' }[t] || '(本科)';
 }
@@ -145,6 +164,7 @@ function renderRegion(res) {
   out += field('税务缴费电话', d.tax);
   out += field('线上缴费方式', d.online);
   out += field('线下缴费方式', d.offline);
+  out += field('资助参保对象', regionSubsidy(res));
   out += field('备注', d.note);
   out += field('数据来源', (d.source || '各地医保局/税务局公开通告'));
   return out;
@@ -165,6 +185,7 @@ function renderUniv(res) {
     out += field('缴费标准', d.fee);
     out += field('征缴期', d.period);
     out += field('参保/缴费方式', d.online);
+    out += field('资助参保对象', subsidyOf([u.city, u.province]));
     out += field('备注', d.note);
     out += field('数据来源', (d.source || '各地医保局/税务局/高校官网公开通告'));
     if (f.fallback) out += '（说明：未单列独立的大学生专项通告，下列为所在地市城乡居民医保标准，若当地有在校学生专门档已一并列出，实际以学校通知为准）\n';

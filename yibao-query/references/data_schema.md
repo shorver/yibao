@@ -5,8 +5,9 @@
 ## data.js
 - **META**：元信息 `{title, year, version, createTime, update, author, contact, disclaimer, tip}`
 - **NATIONAL**：全国通用缴费方式数组 `[{name, desc}]`
+- **SUBSIDY_DEFAULT**：全国默认「资助参保对象」说明（字符串）；当某地区自身及其所属市/省均无 `subsidy` 字段时回退使用
 - **ADMIN**：行政区划树，结构为 `[{code, name, children:[{code, name, children?:[...]}]}]`，省→市→区县三级（直辖市省下直接为区）
-- **REAL**：真实医保数据覆盖层，`{ "标准地名": {level, medical, tax, fee, period, online, offline, note, source} }`
+- **REAL**：真实医保数据覆盖层，`{ "标准地名": {level, medical, tax, fee, period, online, offline, note, subsidy, source} }`
   - `level`：行政区划级别（province/city/...）
   - `medical`：医保咨询电话（带区号）
   - `tax`：税务缴费电话（带区号）
@@ -15,6 +16,7 @@
   - `online`：线上缴费方式
   - `offline`：线下缴费方式
   - `note`：备注
+  - `subsidy`：资助参保对象说明（可选字符串）；查询时沿「自身→所属市→所属省」逐级继承，命中即用，全部缺失则回退到 `SUBSIDY_DEFAULT`。已为 31 个大陆省级条目逐省填充（浙江省为专属文本），省市县无独立 `subsidy` 时自动继承所属省
   - `source`：数据来源
 
 ## universities.js

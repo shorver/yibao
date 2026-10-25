@@ -1,0 +1,141 @@
+:root{
+  --bg:#f4f6f8; --card:#ffffff; --ink:#1a1f24; --sub:#5a6672;
+  --brand:#0a6ebd; --brand-d:#075a9c; --line:#dfe5ea;
+  --ok:#0a7d3e; --warn:#b4690e; --tel:#0a6ebd;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:18px;line-height:1.6;-webkit-text-size-adjust:100%}
+header{background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff;padding:22px 16px 18px}
+header h1{margin:0 0 6px;font-size:26px;font-weight:800;letter-spacing:1px}
+.meta{font-size:15px;opacity:.92;margin-bottom:8px}
+.tip{font-size:14px;opacity:.9;margin:0;line-height:1.5}
+/* 刷新 */
+.refresh-row{display:flex;align-items:center;gap:10px;margin:8px 0 2px;flex-wrap:wrap}
+.refresh{font-size:15px;font-weight:700;padding:8px 16px;border:1px solid rgba(255,255,255,.55);
+  border-radius:20px;background:#fff;color:var(--brand);cursor:pointer}
+.refresh:disabled{opacity:.55;cursor:not-allowed}
+.mode-tip{font-size:13px;opacity:.92}
+.wrap{max-width:880px;margin:0 auto;padding:14px 14px 60px}
+section{margin-top:20px}
+.h2{font-size:20px;font-weight:800;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.h2 .dot{width:10px;height:22px;background:var(--brand);border-radius:3px;display:inline-block}
+
+/* 全国通用 */
+.nat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:560px){.nat-grid{grid-template-columns:1fr}}
+.nat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.nat b{color:var(--brand-d);font-size:17px}
+.nat p{margin:6px 0 0;font-size:15px;color:var(--sub)}
+
+/* 省份栏 */
+.prov-bar{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;-webkit-overflow-scrolling:touch}
+.prov{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:20px;
+  padding:8px 14px;font-size:15px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.prov.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+
+/* 搜索 */
+.search{display:flex;gap:10px;margin-top:14px}
+.search input{flex:1;font-size:20px;padding:14px 16px;border:2px solid var(--brand);
+  border-radius:12px;outline:none;background:#fff}
+.search button{font-size:18px;font-weight:700;padding:0 22px;border:none;border-radius:12px;
+  background:var(--brand);color:#fff;cursor:pointer}
+.cand{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.cand-item{border:1px solid var(--line);background:#fff;border-radius:10px;padding:12px 14px;cursor:pointer}
+.cand-item:hover{border-color:var(--brand)}
+.cand-item .nm{font-size:19px;font-weight:700}
+.cand-item .lv{font-size:13px;color:#fff;background:var(--sub);border-radius:4px;padding:1px 7px;margin-left:8px}
+.cand-item .alttag{font-size:12px;color:#8a5a00;background:#fff3d6;border:1px solid #f0d9a0;border-radius:4px;padding:1px 7px;margin-left:8px}
+.cand-item .pa{font-size:14px;color:var(--sub);margin-top:2px}
+
+/* 详情卡 */
+.detail{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.detail .head{background:var(--brand);color:#fff;padding:14px 16px}
+.detail .head .t{font-size:24px;font-weight:800}
+.detail .head .s{font-size:14px;opacity:.9;margin-top:2px}
+.inherit{background:#fff7e6;border:1px solid #f0c36d;color:var(--warn);
+  padding:10px 14px;font-size:15px;line-height:1.5}
+.row{display:flex;gap:12px;padding:13px 16px;border-top:1px solid var(--line)}
+.row .k{flex:0 0 92px;font-weight:700;color:var(--brand-d);font-size:16px}
+.row .v{flex:1;font-size:16px;word-break:break-word}
+a.tel{color:var(--tel);text-decoration:none;font-weight:700}
+.src{font-size:13px;color:var(--sub);padding:10px 16px;border-top:1px solid var(--line)}
+.back{display:inline-block;margin-top:14px;color:var(--brand);cursor:pointer;font-size:16px}
+
+/* 省视图下市列表 */
+.city-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+@media(max-width:560px){.city-list{grid-template-columns:1fr}}
+.city-chip{border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 13px;
+  cursor:pointer;font-size:16px;display:flex;justify-content:space-between;align-items:center}
+.city-chip:hover{border-color:var(--brand)}
+.city-chip .cnt{font-size:13px;color:var(--sub)}
+.empty{color:var(--sub);font-size:15px;padding:14px 0}
+
+/* 页签 */
+.tabs{display:flex;gap:10px;margin-top:22px}
+.tab{flex:1;text-align:center;font-size:17px;font-weight:700;padding:13px 8px;border:1px solid var(--line);
+  background:#fff;border-radius:12px;cursor:pointer;color:var(--sub)}
+.tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+
+/* 头部免责声明 */
+header .disclaimer{font-size:13px;opacity:.95;margin:8px 0 0;line-height:1.5;
+  background:rgba(255,255,255,.18);border-radius:8px;padding:7px 10px}
+
+/* 使用方法 */
+.how{display:flex;flex-direction:column;gap:10px}
+.how-item{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:12px 14px;display:flex;gap:12px;align-items:flex-start}
+.how-item .step{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--brand);
+  color:#fff;font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center}
+.how-item b{color:var(--brand-d);font-size:17px}
+.how-item p{margin:3px 0 0;font-size:15px;color:var(--sub);line-height:1.55}
+
+/* 详情卡内免责声明 */
+.disc{font-size:13px;color:var(--sub);padding:10px 16px;border-top:1px dashed var(--line);
+  background:#fafbfc;line-height:1.5}
+
+/* 缴费截止倒计时 */
+.countdown{margin:0;padding:12px 16px;font-size:17px;font-weight:700;border-top:1px solid var(--line);
+  background:#fff8ec;color:var(--warn)}
+.countdown.active{background:#eafaf0;color:var(--ok)}
+.countdown.today{background:#fff3d6;color:#a35a00}
+.countdown.ended{background:#f3f4f6;color:var(--sub)}
+.countdown b{font-size:22px}
+
+/* 生成分享图按钮 */
+.share-btn{margin:14px 16px;display:inline-block;font-size:16px;font-weight:700;
+  padding:11px 18px;border:none;border-radius:10px;background:var(--brand);color:#fff;cursor:pointer}
+.share-btn:active{opacity:.85}
+
+/* 页脚 */
+.foot{max-width:880px;margin:0 auto;padding:18px 14px 34px;font-size:13px;color:var(--sub);line-height:1.7;
+  border-top:1px solid var(--line)}
+.foot p{margin:4px 0}
+.foot .about{margin:10px 0;padding:10px 12px;background:#eef3f7;border-radius:10px}
+.foot .about p{margin:2px 0}
+.foot a{color:var(--brand);text-decoration:none;font-weight:600}
+
+/* 合并搜索结果（省/市级聚合：地区 chips + 大学列表） */
+.merge-sec{font-size:16px;font-weight:800;color:var(--brand-d);padding:14px 16px 8px;border-top:1px solid var(--line);margin-top:4px}
+.merge-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 12px}
+@media(max-width:560px){.merge-grid{grid-template-columns:1fr}}
+.region-chip{border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 13px;cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center;font-size:16px;gap:8px}
+.region-chip:hover{border-color:var(--brand)}
+.region-chip .rn{font-weight:700}
+.region-chip .rt{font-size:12px;border-radius:4px;padding:1px 7px;white-space:nowrap}
+.region-chip .rt.has{color:#0a7d3e;background:#eafaf0;border:1px solid #bfe6cc}
+.region-chip .rt.none{color:var(--sub);background:#f1f3f5;border:1px solid var(--line)}
+.uni-list{display:flex;flex-direction:column;gap:6px;padding:0 16px 14px}
+.uni-item{border:1px solid var(--line);background:#fff;border-radius:9px;padding:10px 12px;cursor:pointer;
+  display:flex;align-items:center;gap:8px;font-size:15px}
+.uni-item:hover{border-color:var(--brand)}
+.uni-item .un{font-weight:700;flex:1}
+.uni-item .ut{font-size:12px;border-radius:4px;padding:1px 7px;color:#fff;white-space:nowrap}
+.uni-item .ut.tb{background:var(--brand)}
+.uni-item .ut.tv{background:#7a5cc7}
+.uni-item .ut.tc{background:#8a8f96}
+.uni-item .uc{font-size:13px;color:var(--sub);white-space:nowrap}
+.more-hint{font-size:13px;color:var(--sub);padding:6px 2px}
+

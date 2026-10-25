@@ -11,9 +11,20 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA = path.join(__dirname, '..', 'data');
+// 网页版项目目录：本地唯一权威数据源（与医保网页版同源）。
+// 可通过环境变量 YIBAO_PROJECT_DIR 覆盖；默认指向本机医保网页版项目。
+const PROJECT_DIR = process.env.YIBAO_PROJECT_DIR
+  || 'D:/我的文档/WorkBuddy/医保';
+// skill 自带 data 目录：仅作分发 / 离线兜底，非本地权威源。
+const SKILL_DATA = path.join(__dirname, '..', 'data');
+
+function resolveFile(file) {
+  const cands = [path.join(PROJECT_DIR, file), path.join(SKILL_DATA, file)];
+  for (const p of cands) if (fs.existsSync(p)) return p;
+  throw new Error('数据文件未找到: ' + file + '\n已尝试：\n  ' + cands.join('\n  '));
+}
 function loadVars(file, vars) {
-  const code = fs.readFileSync(path.join(DATA, file), 'utf8');
+  const code = fs.readFileSync(resolveFile(file), 'utf8');
   const expr = code + '\nreturn {' + vars.map(v => v + ':' + v).join(',') + '};';
   return new Function(expr)();
 }
@@ -161,6 +172,18 @@ const q = process.argv.slice(3).join(' ').trim();
 
 if (!mode || mode === 'help' || mode === '-h' || mode === '--help') {
   console.log(help()); process.exit(0);
+}
+if (mode === '数据源' || mode === 'source') {
+  const files = ['data.js', 'universities.js', 'aliases.js', 'uni_fee.js'];
+  let out = '【蚂蚁哥医保查询 — 数据加载来源】\n';
+  for (const f of files) {
+    const p = resolveFile(f);
+    const isProj = p === path.join(PROJECT_DIR, f);
+    out += '  ' + (isProj ? '[网页版] ' : '[skill自带] ') + f + '  ->  ' + p + '\n';
+  }
+  out += '\n网页版项目目录（可用环境变量 YIBAO_PROJECT_DIR 覆盖）：\n  ' + PROJECT_DIR + '\n';
+  out += '说明：本地优先读取网页版项目数据（单一数据源），skill 自带 data/ 仅作分发/离线兜底。';
+  console.log(out); process.exit(0);
 }
 if (mode === '全国' || mode === 'national') {
   let out = '【' + YEAR + ' 全国通用缴费方式】\n';

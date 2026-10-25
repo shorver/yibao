@@ -51,7 +51,7 @@ v1.0.0（2026-10-24 创建）
 - 触发：问「XX 市医保怎么缴」「XX 大学学生医保多少」时自动调用
 - 能力：地区查询（区县继承上级标准）、高校查询（支持旧校名别名反查）、全国通用缴费方式
 - 安装：在 WorkBuddy 客户端「技能中心 → 创作者/上传」导入 `yibao-query.zip`，或把 `yibao-query/` 目录放到用户级 skills 目录（`~/.workbuddy/skills/`）
-- 说明：skill 与网页版共用同一份 data.js / universities.js 等数据，`scripts/query.js` 为离线 Node 查询脚本，不联网
+- 说明：本地 skill 运行时直接读取网页版项目目录的数据文件（单一数据源，改网页版数据即自动同步），自带 `data/` 仅作分发/离线兜底；`scripts/query.js` 为离线 Node 查询脚本，不联网。可用 `node scripts/query.js 数据源` 查看各文件实际加载路径（默认优先网页版）。
 
 ## 代码仓库
 

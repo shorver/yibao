@@ -95,6 +95,19 @@ header .disclaimer{font-size:13px;opacity:.95;margin:8px 0 0;line-height:1.5;
 .disc{font-size:13px;color:var(--sub);padding:10px 16px;border-top:1px dashed var(--line);
   background:#fafbfc;line-height:1.5}
 
+/* 缴费截止倒计时 */
+.countdown{margin:0;padding:12px 16px;font-size:17px;font-weight:700;border-top:1px solid var(--line);
+  background:#fff8ec;color:var(--warn)}
+.countdown.active{background:#eafaf0;color:var(--ok)}
+.countdown.today{background:#fff3d6;color:#a35a00}
+.countdown.ended{background:#f3f4f6;color:var(--sub)}
+.countdown b{font-size:22px}
+
+/* 生成分享图按钮 */
+.share-btn{margin:14px 16px;display:inline-block;font-size:16px;font-weight:700;
+  padding:11px 18px;border:none;border-radius:10px;background:var(--brand);color:#fff;cursor:pointer}
+.share-btn:active{opacity:.85}
+
 /* 页脚 */
 .foot{max-width:880px;margin:0 auto;padding:18px 14px 34px;font-size:13px;color:var(--sub);line-height:1.7;
   border-top:1px solid var(--line)}

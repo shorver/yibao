@@ -4,7 +4,7 @@
   'use strict';
 
   // —— 可变数据（applyData 时赋值）——
-  var META, NATIONAL, ADMIN, REAL, UNIVERSITIES, ALIASES, UNI_FEE;
+  var META, NATIONAL, ADMIN, REAL, UNIVERSITIES, ALIASES, UNI_FEE, SUBSIDY_DEFAULT;
   var nodes = [], byName = {}, uniIdx = [], aliasByNew = {};
   var currentMode = 'local'; // 'net' = 已联网加载 data.json（可刷新）；'local' = 静态降级
   var MUNI = { '北京市': 1, '天津市': 1, '上海市': 1, '重庆市': 1 };
@@ -72,6 +72,7 @@
   function applyData(D, fromNet) {
     META = D.META; NATIONAL = D.NATIONAL; ADMIN = D.ADMIN; REAL = D.REAL;
     UNIVERSITIES = D.UNIVERSITIES; ALIASES = D.ALIASES; UNI_FEE = D.UNI_FEE;
+    SUBSIDY_DEFAULT = D.SUBSIDY_DEFAULT;
     buildIndex();
     renderMeta();
     renderNational();
@@ -131,6 +132,167 @@
     return '<div class="row"><div class="k">' + k + '</div><div class="v">' + (isTel ? telify(v) : esc(v)) + '</div></div>';
   }
 
+  // ============ 资助参保对象（带继承回退） ============
+  function getSubsidy(node) {
+    if (!node) return SUBSIDY_DEFAULT;
+    var chain = [node.name].concat(node.ancestors.slice().reverse());
+    for (var i = 0; i < chain.length; i++) {
+      if (REAL[chain[i]] && REAL[chain[i]].subsidy) return REAL[chain[i]].subsidy;
+    }
+    return SUBSIDY_DEFAULT;
+  }
+
+  // ============ 缴费截止倒计时 ============
+  function parseOneRange(seg) {
+    var dotRe = /(\d{4})\.(\d{1,2})\.(\d{1,2})\s*[—\-~]\s*(?:(\d{4})\.(\d{1,2})\.(\d{1,2})|(\d{1,2})\.(\d{1,2})|(\d{1,2}))/;
+    var m = seg.match(dotRe);
+    if (m) {
+      var sy = +m[1], sm = +m[2], sd = +m[3], ey, em, ed;
+      if (m[4]) { ey = +m[4]; em = +m[5]; ed = +m[6]; }
+      else if (m[7]) { ey = sy; em = +m[7]; ed = +m[8]; }
+      else if (m[9]) { ey = sy; em = sm; ed = +m[9]; }
+      return new Date(ey, em - 1, ed);
+    }
+    var cnRe = /(\d{4})年(\d{1,2})月(\d{1,2})日\s*[—\-~]\s*(?:(\d{4})年)?(\d{1,2})月(\d{1,2})日/;
+    var c = seg.match(cnRe);
+    if (c) {
+      var sy2 = +c[1], sm2 = +c[2], ey2, em2, ed2;
+      if (c[4]) { ey2 = +c[4]; em2 = +c[5]; ed2 = +c[6]; }
+      else { ey2 = sy2; em2 = +c[5]; ed2 = +c[6]; }
+      return new Date(ey2, em2 - 1, ed2);
+    }
+    return null;
+  }
+  function parseDeadline(period) {
+    if (!period) return null;
+    var segs = period.split(/[；;]/), best = null;
+    segs.forEach(function (seg) {
+      var d = parseOneRange(seg);
+      if (d && (!best || d > best)) best = d;
+    });
+    return best;
+  }
+  function countdownInfo(period) {
+    var end = parseDeadline(period);
+    if (!end) return null;
+    var now = new Date();
+    var endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    var nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var diff = Math.round((endDay - nowDay) / 86400000);
+    var label = end.getFullYear() + '年' + (end.getMonth() + 1) + '月' + end.getDate() + '日';
+    if (diff > 0) return { state: 'active', text: '距集中缴费截止还有 ' + diff + ' 天（截止 ' + label + '）' };
+    if (diff === 0) return { state: 'today', text: '今天是集中缴费截止日（' + label + '），请尽快缴费' };
+    return { state: 'ended', text: '集中缴费期已于 ' + label + ' 结束，补缴或特殊参保请以当地最新通告为准' };
+  }
+  function countdownHtml(period) {
+    var info = countdownInfo(period);
+    if (!info) return '';
+    return '<div class="countdown ' + info.state + '">' + esc(info.text) + '</div>';
+  }
+
+  // ============ 分享图（canvas → PNG，纯前端） ============
+  function wrapText(ctx, text, maxW) {
+    text = String(text == null ? '' : text);
+    var lines = [], cur = '';
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (ch === '\n') { lines.push(cur); cur = ''; continue; }
+      var test = cur + ch;
+      if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = ch; }
+      else cur = test;
+    }
+    if (cur) lines.push(cur);
+    return lines.length ? lines : [''];
+  }
+  function downloadCanvas(cv, filename) {
+    if (cv.toBlob) {
+      cv.toBlob(function (blob) {
+        if (!blob) return;
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+      }, 'image/png');
+    } else {
+      var a2 = document.createElement('a');
+      a2.href = cv.toDataURL('image/png'); a2.download = filename; a2.click();
+    }
+  }
+  function makeShareImage(p) {
+    var W = 750, pad = 32, x = pad;
+    var cv = document.createElement('canvas');
+    var ctx = cv.getContext('2d');
+    var lineH = 30, rowGap = 16, headH = 96, footH = 64, discH = 60;
+    var total = headH + footH + discH + 24;
+    var layouts = [];
+    p.rows.forEach(function (r) {
+      ctx.font = 'bold 20px "Microsoft YaHei", sans-serif';
+      var kL = wrapText(ctx, r.k, 150);
+      ctx.font = '22px "Microsoft YaHei", sans-serif';
+      var vL = wrapText(ctx, r.v, W - pad * 2 - 160);
+      var lines = Math.max(kL.length, vL.length);
+      var h = lines * lineH + rowGap;
+      layouts.push({ k: kL, v: vL, h: h });
+      total += h;
+    });
+    var countdownLines = [];
+    if (p.countdown) {
+      ctx.font = 'bold 20px "Microsoft YaHei", sans-serif';
+      countdownLines = wrapText(ctx, p.countdown, W - pad * 2);
+      total += countdownLines.length * lineH + rowGap;
+    }
+    cv.width = W; cv.height = total;
+    ctx = cv.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, total);
+    ctx.fillStyle = '#0a6ebd'; ctx.fillRect(0, 0, W, headH);
+    ctx.fillStyle = '#ffffff'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold 30px "Microsoft YaHei", sans-serif'; ctx.fillText(p.title, pad, 36);
+    ctx.font = '15px "Microsoft YaHei", sans-serif'; ctx.fillText(p.subtitle, pad, 68);
+    var y = headH + 14;
+    if (countdownLines.length) {
+      ctx.font = 'bold 20px "Microsoft YaHei", sans-serif'; ctx.fillStyle = '#b4690e';
+      countdownLines.forEach(function (ln) { ctx.fillText(ln, x, y + lineH / 2); y += lineH; });
+      y += rowGap - 10;
+    }
+    layouts.forEach(function (L) {
+      ctx.font = 'bold 20px "Microsoft YaHei", sans-serif'; ctx.fillStyle = '#075a9c';
+      var ky = y + lineH / 2;
+      L.k.forEach(function (ln, i) { ctx.fillText(ln, x, ky + i * lineH); });
+      ctx.font = '22px "Microsoft YaHei", sans-serif'; ctx.fillStyle = '#1a1f24';
+      L.v.forEach(function (ln, i) { ctx.fillText(ln, x + 160, ky + i * lineH); });
+      y += L.h;
+      ctx.strokeStyle = '#dfe5ea'; ctx.beginPath(); ctx.moveTo(x, y - rowGap / 2); ctx.lineTo(W - pad, y - rowGap / 2); ctx.stroke();
+    });
+    ctx.font = '14px "Microsoft YaHei", sans-serif'; ctx.fillStyle = '#5a6672';
+    var dl = wrapText(ctx, p.disclaimer, W - pad * 2);
+    dl.forEach(function (ln) { ctx.fillText(ln, x, y + 10); y += 20; });
+    y = total - footH;
+    ctx.font = '15px "Microsoft YaHei", sans-serif'; ctx.fillStyle = '#0a6ebd';
+    ctx.fillText('蚂蚁哥医保查询 · 数据以当地医保局通告为准', pad, y + 18);
+    ctx.font = '13px "Microsoft YaHei", sans-serif'; ctx.fillStyle = '#5a6672';
+    ctx.fillText('shorver@163.com', pad, y + 40);
+    downloadCanvas(cv, p.filename || '医保查询分享图.png');
+  }
+  function buildSharePayload(title, subtitle, rows, period, source) {
+    var info = countdownInfo(period);
+    return {
+      title: title, subtitle: subtitle, rows: rows,
+      countdown: info ? info.text : '',
+      disclaimer: '本图由「蚂蚁哥医保查询」自动生成，为便民信息汇总，非官方经办渠道，具体以当地医保局通告为准。',
+      filename: title + '_医保分享.png'
+    };
+  }
+  function attachShare(container, payload) {
+    var btn = container.querySelector('.share-btn');
+    if (btn) btn.onclick = function () { makeShareImage(payload); flash(btn); };
+  }
+  function flash(btn) {
+    var old = btn.textContent;
+    btn.textContent = '✓ 已生成，正在下载…';
+    setTimeout(function () { btn.textContent = old; }, 2000);
+  }
+
   function renderNational() {
     if (!$nat) return;
     $nat.innerHTML = '';
@@ -170,7 +332,18 @@
     kw = (kw || '').trim();
     $detail.innerHTML = '';
     if (!kw) { $cand.innerHTML = ''; return; }
-    var hits = nodes.filter(function (n) { return n.name.indexOf(kw) >= 0; }).slice(0, 15);
+    var hits = nodes.filter(function (n) {
+      if (n.name.indexOf(kw) >= 0) return true;
+      if (n.province.indexOf(kw) >= 0) return true;
+      if (n.city && n.city.indexOf(kw) >= 0) return true;
+      var res = getDetail(n);
+      if (res && res.data) {
+        var d = res.data;
+        var hay = [d.fee, d.period, d.online, d.offline, d.note, d.medical, d.tax].join(' ');
+        if (hay.indexOf(kw) >= 0) return true;
+      }
+      return false;
+    }).slice(0, 30);
     if (!hits.length) { $cand.innerHTML = '<div class="empty">未找到匹配的地区，试试只输入城市/县名，如“金华”“浦江”。</div>'; return; }
     $cand.innerHTML = '';
     hits.forEach(function (h) {
@@ -194,6 +367,7 @@
       html += '<div class="inherit">以下为【' + esc(res.usedName) + '】统一征缴标准。该地（' + esc(node.name) +
         '）未单独发布独立通告，具体缴费标准、起止时间、资助政策以当地最新通告为准。</div>';
     }
+    html += countdownHtml(d.period);
     html += row('医保咨询', d.medical, true);
     html += row('税务缴费', d.tax, true);
     html += row('2027个人缴费', d.fee);
@@ -201,10 +375,26 @@
     html += row('线上缴费', d.online);
     html += row('线下渠道', d.offline);
     html += row('备注', d.note);
+    html += row('资助参保对象', getSubsidy(node));
+    html += '<button class="share-btn">📤 生成分享图（PNG）</button>';
     html += '<div class="src">数据来源：' + esc(d.source || '各地医保局/税务局公开通告') + '</div>';
     html += DISCLAIMER;
     html += '</div>';
     $detail.innerHTML = html;
+    var shareRows = [
+      { k: '医保咨询', v: d.medical || '—' },
+      { k: '税务缴费', v: d.tax || '—' },
+      { k: '2027个人缴费', v: d.fee || '—' },
+      { k: '缴费时间', v: d.period || '—' },
+      { k: '线上缴费', v: d.online || '—' },
+      { k: '线下渠道', v: d.offline || '—' },
+      { k: '备注', v: d.note || '—' },
+      { k: '资助参保对象', v: getSubsidy(node) }
+    ];
+    attachShare($detail, buildSharePayload(
+      node.name + (res.inherited ? '（沿用' + res.usedName + '）' : ''),
+      (LV[node.level] || '') + (node.province ? ' ｜ ' + node.province : '') + (node.city ? ' ／ ' + node.city : ''),
+      shareRows, d.period, d.source));
     $detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -217,6 +407,7 @@
     html += '<div class="detail"><div class="head"><div class="t">' + esc(pname) + '（全省/市通用）</div>' +
       '<div class="s">省级征缴总览</div></div>';
     if (res) {
+      html += countdownHtml(res.period);
       html += row('医保咨询', res.medical, true);
       html += row('税务缴费', res.tax, true);
       html += row('2027个人缴费', res.fee);
@@ -224,6 +415,8 @@
       html += row('线上缴费', res.online);
       html += row('线下渠道', res.offline);
       html += row('备注', res.note);
+      html += row('资助参保对象', getSubsidy({ name: pname, ancestors: [] }));
+      html += '<button class="share-btn">📤 生成分享图（PNG）</button>';
       html += '<div class="src">数据来源：' + esc(res.source || '各地医保局/税务局公开通告') + '</div>';
       html += DISCLAIMER;
     }
@@ -236,6 +429,17 @@
     });
     html += '</div></div></div>';
     $detail.innerHTML = html;
+    var pShareRows = res ? [
+      { k: '医保咨询', v: res.medical || '—' },
+      { k: '税务缴费', v: res.tax || '—' },
+      { k: '2027个人缴费', v: res.fee || '—' },
+      { k: '缴费时间', v: res.period || '—' },
+      { k: '线上缴费', v: res.online || '—' },
+      { k: '线下渠道', v: res.offline || '—' },
+      { k: '备注', v: res.note || '—' },
+      { k: '资助参保对象', v: getSubsidy({ name: pname, ancestors: [] }) }
+    ] : [];
+    attachShare($detail, buildSharePayload(pname + '（全省/市通用）', '省级征缴总览', pShareRows, res ? res.period : '', res ? res.source : ''));
     Array.prototype.forEach.call($detail.querySelectorAll('.city-chip'), function (chip) {
       chip.onclick = function () {
         var name = chip.getAttribute('data-c');
@@ -316,16 +520,30 @@
     if (u.aliases && u.aliases.length) {
       html += row('原校名', u.aliases.join('、') + (u.aliasYear ? '（' + u.aliasYear + ' 年' + (u.aliasKind || '变更') + '）' : ''));
     }
+    html += countdownHtml(period);
     html += row('医保咨询', phone, true);
     html += row('税务缴费', tax, true);
     html += row(isChengren ? '2027城乡居民个人缴费（一般档）' : '2027大学生个人缴费', fee);
     html += row('缴费时间', period);
     html += row('参保/缴费方式', online);
     html += row('备注', note);
+    html += row('资助参保对象', getSubsidy({ name: u.city, ancestors: [u.province] }));
+    html += '<button class="share-btn">📤 生成分享图（PNG）</button>';
     html += '<div class="src">数据来源：' + esc(source || '各地医保局/税务局/高校官网公开通告') + '</div>';
     html += DISCLAIMER;
     html += '</div>';
     $udetail.innerHTML = html;
+    var uShareRows = [
+      { k: '办学层次', v: level },
+      { k: '医保咨询', v: phone || '—' },
+      { k: '税务缴费', v: tax || '—' },
+      { k: isChengren ? '2027城乡居民个人缴费（一般档）' : '2027大学生个人缴费', v: fee || '—' },
+      { k: '缴费时间', v: period || '—' },
+      { k: '参保/缴费方式', v: online || '—' },
+      { k: '备注', v: note || '—' },
+      { k: '资助参保对象', v: getSubsidy({ name: u.city, ancestors: [u.province] }) }
+    ];
+    attachShare($udetail, buildSharePayload(u.name, level + '·在校学生医保 ｜ ' + u.province + ' ／ ' + u.city, uShareRows, period, source));
     $udetail.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 

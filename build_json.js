@@ -12,7 +12,7 @@ function loadVars(file, vars) {
 }
 
 const bundle = Object.assign(
-  loadVars('data.js', ['META', 'NATIONAL', 'ADMIN', 'REAL']),
+  loadVars('data.js', ['META', 'NATIONAL', 'ADMIN', 'REAL', 'SUBSIDY_DEFAULT']),
   loadVars('universities.js', ['UNIVERSITIES']),
   loadVars('aliases.js', ['ALIASES']),
   loadVars('uni_fee.js', ['UNI_FEE'])
@@ -22,7 +22,7 @@ const out = path.join(__dirname, 'data.json');
 fs.writeFileSync(out, JSON.stringify(bundle));
 const stat = fs.statSync(out);
 console.log('data.json 已生成：' + (stat.size / 1024).toFixed(1) + ' KB');
-['META', 'NATIONAL', 'ADMIN', 'REAL', 'UNIVERSITIES', 'ALIASES', 'UNI_FEE'].forEach(function (k) {
+['META', 'NATIONAL', 'ADMIN', 'REAL', 'SUBSIDY_DEFAULT', 'UNIVERSITIES', 'ALIASES', 'UNI_FEE'].forEach(function (k) {
   const v = bundle[k];
   const n = Array.isArray(v) ? v.length : (v && typeof v === 'object' ? Object.keys(v).length : '?');
   console.log('  ' + k + ': ' + n);

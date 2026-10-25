@@ -1,0 +1,28 @@
+1 ICON "assets\icon.ico"
+
+1 VERSIONINFO
+FILEVERSION 1,0,5,0
+PRODUCTVERSION 1,0,5,0
+FILEOS 0x40004
+FILETYPE 0x1
+FILESUBTYPE 0x0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "080404b0"
+    BEGIN
+      VALUE "CompanyName", "浦江蚂蚁哥文具店"
+      VALUE "FileDescription", "蚂蚁哥医保查询 - 2027年度城乡居民医保征缴信息（原生单文件版）"
+      VALUE "FileVersion", "1.0.5"
+      VALUE "InternalName", "yibao"
+      VALUE "LegalCopyright", "Copyright 2026 浦江蚂蚁哥 shorver@163.com"
+      VALUE "OriginalFilename", "蚂蚁哥医保查询v1.0.5.exe"
+      VALUE "ProductName", "蚂蚁哥医保查询"
+      VALUE "ProductVersion", "1.0.5"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0804, 1200
+  END
+END

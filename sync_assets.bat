@@ -1,13 +1,14 @@
 @echo off
 chcp 936 >nul
-rem ÓÃÍ¾£ºÍøÒ³°æÊý¾Ý¸üÐÂºó£¬°Ñ×îÐÂ×ÊÔ´Í¬²½½ø Rust µ¥ÎÄ¼þ°æµÄ assets Ä¿Â¼
-rem ÓÃ·¨£ºÔÚ±¾Ä¿Â¼Ë«»÷ÔËÐÐ£»Íê³Éºó½øÈë yibao-exe Ö´ÐÐ cargo build --release
+rem ï¿½ï¿½Í¾ï¿½ï¿½ï¿½ï¿½Ò³ï¿½ï¿½ï¿½ï¿½ï¿½Ý¸ï¿½ï¿½Âºó£¬°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´Í¬ï¿½ï¿½ï¿½ï¿½ Rust ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ assets Ä¿Â¼
+rem ï¿½Ã·ï¿½ï¿½ï¿½ï¿½Ú±ï¿½Ä¿Â¼Ë«ï¿½ï¿½ï¿½ï¿½ï¿½Ð£ï¿½ï¿½ï¿½Éºï¿½ï¿½ï¿½ï¿½ yibao-exe Ö´ï¿½ï¿½ cargo build --release
 cd /d "%~dp0"
 if not exist "yibao-exe\assets\icon" mkdir "yibao-exe\assets\icon"
 for %%f in (index.html app.js style.css data.json data.js universities.js aliases.js uni_fee.js) do copy /y "%%f" "yibao-exe\assets\%%f" >nul
 copy /y "icon\icon_32.png" "yibao-exe\assets\icon\icon_32.png" >nul
 copy /y "icon\icon_180.png" "yibao-exe\assets\icon\icon_180.png" >nul
-echo [Íê³É] ×îÐÂ×ÊÔ´ÒÑÍ¬²½µ½ yibao-exe\assets
-echo ÏÂÒ»²½£º½øÈë yibao-exe Ä¿Â¼£¬Ö´ÐÐ cargo build --release
-echo ¹¹½¨Íê³Éºó£¬°Ñ target\release\yibao.exe ¿½³ö²¢¸ÄÃûÎª´ø°æ±¾ºÅµÄÃû×Ö¼´¿É·Ö·¢
+copy /y "icon\icon_256.png" "yibao-exe\assets\icon\icon_256.png" >nul
+echo [ï¿½ï¿½ï¿½] ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½Í¬ï¿½ï¿½ï¿½ï¿½ yibao-exe\assets
+echo ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ yibao-exe Ä¿Â¼ï¿½ï¿½Ö´ï¿½ï¿½ cargo build --release
+echo ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Éºó£¬°ï¿½ target\release\yibao.exe ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½æ±¾ï¿½Åµï¿½ï¿½ï¿½ï¿½Ö¼ï¿½ï¿½É·Ö·ï¿½
 pause

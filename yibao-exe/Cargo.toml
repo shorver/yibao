@@ -2,12 +2,18 @@
 name = "yibao"
 version = "1.0.5"
 edition = "2021"
-description = "蚂蚁哥医保查询 - 本地单文件版（内嵌网页版全部资源，双击即用）"
+description = "蚂蚁哥医保查询 - 2027年度城乡居民医保征缴信息（原生 GUI 单文件版）"
 authors = ["浦江蚂蚁哥 <shorver@163.com>"]
 
+[[bin]]
+name = "yibao"
+path = "src/main.rs"
+
+[dependencies]
+egui = "0.31"
+eframe = "0.31"
+serde_json = "1"
+regex = "1"
+
 [profile.release]
-opt-level = "z"
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = true
+opt-level = 2

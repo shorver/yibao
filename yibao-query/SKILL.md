@@ -1,6 +1,20 @@
 ---
 name: yibao-query
-description: 蚂蚁哥医保查询助手。当用户询问中国大陆某省/市/区/县的 2027 年度城乡居民医保缴费标准、咨询电话、缴费方式、集中征缴期，或查询某高校（含已更名/升格院校）在校学生医保标准时使用。聚合各地医保局、税务局公开通告，非官方经办渠道，不提供参保登记、报销申请、账户查询等经办服务。This skill should be used when the user asks about China's urban-rural residents basic medical insurance (城乡居民医保) payment standards, hotlines, payment methods, or university student insurance fees for a specific region or school in 2027.
+display_name: 蚂蚁哥医保查询
+display_name_en: AntGe Medical Insurance Query
+description: 蚂蚁哥医保查询助手，聚合2027年度各地医保局/税务局公开的城乡居民医保缴费标准、咨询电话、缴费方式及高校在校生医保标准，非官方经办渠道。
+description_zh: 蚂蚁哥医保查询助手：聚合2027年度全国城乡居民医保征缴信息（缴费标准、咨询电话、缴费方式、征缴期）及高校在校生医保标准，支持按省/市/区县和高校查询。非官方经办渠道，不提供参保登记、报销、账户查询等经办服务。
+description_en: AntGe medical insurance query assistant. Aggregates publicly released 2027 urban-rural residents basic medical insurance payment standards, hotlines, payment methods, and university student insurance fees across China. Not an official channel.
+examples_zh:
+  - "金华市2027年居民医保要交多少钱"
+  - "浦江县医保咨询电话是多少"
+  - "浙江大学学生医保怎么交"
+examples_en:
+  - "How much is residents medical insurance in Jinhua for 2027"
+  - "What is the medical insurance hotline for Pujiang County"
+  - "How do Zhejiang University students pay medical insurance"
+version: 1.0.0
+author: 浦江蚂蚁哥
 agent_created: true
 ---
 

@@ -2,6 +2,8 @@
 // 数据与检索逻辑完整移植自网页版 app.js（智能搜索 / 层级判定 / 重名候选 /
 // 全文回退 / 缴费截止倒计时 / 资助参保对象继承 / 大学生医保标准解析）。
 // 全部资源（data.json 与图标）编译期内嵌，双击即用，不弹浏览器、不依赖网络。
+// windows_subsystem="windows"：去掉启动时的黑色 cmd 控制台窗口，单文件纯 GUI 运行
+#![windows_subsystem = "windows"]
 #![allow(clippy::too_many_arguments)]
 
 use std::collections::BTreeMap;
@@ -15,6 +17,9 @@ const VERSION: &str = "1.0.5";
 const APP_NAME: &str = "蚂蚁哥医保查询";
 static DATA_JSON: &[u8] = include_bytes!("../assets/data.json");
 static LOGO_PNG: &[u8] = include_bytes!("../assets/icon/icon_256.png");
+/// 内嵌中文字体子集（微软雅黑，由 tools/make_cjk_font.py 生成）。
+/// egui 默认字体不含中文字形，不嵌这个中文会全部显示为 □。
+static CJK_FONT: &[u8] = include_bytes!("../assets/cjk_font.ttf");
 
 const BRAND: egui::Color32 = egui::Color32::from_rgb(0x0a, 0x6e, 0xbd);
 const BRAND_D: egui::Color32 = egui::Color32::from_rgb(0x07, 0x5a, 0x9c);
@@ -1179,6 +1184,44 @@ impl Bundle {
 
 // ================= 应用 =================
 
+/// 安装中文字体：内嵌子集置首位（自包含，任何机器中文不乱码），
+/// 系统黑体追加兜底（覆盖子集外的生僻字/繁体，取不到也不影响）。
+fn install_cjk_fonts(ctx: &egui::Context) {
+    let mut fonts = egui::FontDefinitions::default();
+    fonts.font_data.insert(
+        "cjk".to_owned(),
+        std::sync::Arc::new(egui::FontData::from_owned(CJK_FONT.to_vec())),
+    );
+    let mut sys_loaded = false;
+    if let Ok(bytes) = std::fs::read(r"C:\Windows\Fonts\simhei.ttf") {
+        if !bytes.is_empty() {
+            fonts.font_data.insert(
+                "cjk_sys".to_owned(),
+                std::sync::Arc::new(egui::FontData::from_owned(bytes)),
+            );
+            sys_loaded = true;
+        }
+    }
+    // 比例字体：内嵌 CJK 放最前；等宽字体：追加到末尾（拉丁字符仍走原等宽字体）
+    let prop = fonts
+        .families
+        .entry(egui::FontFamily::Proportional)
+        .or_default();
+    prop.insert(0, "cjk".to_owned());
+    if sys_loaded {
+        prop.push("cjk_sys".to_owned());
+    }
+    let mono = fonts
+        .families
+        .entry(egui::FontFamily::Monospace)
+        .or_default();
+    mono.push("cjk".to_owned());
+    if sys_loaded {
+        mono.push("cjk_sys".to_owned());
+    }
+    ctx.set_fonts(fonts);
+}
+
 struct App {
     b: Bundle,
     tab: usize, // 0=地区 1=大学
@@ -1192,17 +1235,19 @@ struct App {
 
 impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> App {
+        // 中文字体必须最先安装，否则界面中文全部显示为 □
+        install_cjk_fonts(&cc.egui_ctx);
         // 适老化大字号 + 浅色主题
         let mut style = (*cc.egui_ctx.style()).clone();
         style.text_styles = [
-            (egui::TextStyle::Small, egui::FontId::proportional(15.0)),
-            (egui::TextStyle::Body, egui::FontId::proportional(18.0)),
-            (egui::TextStyle::Button, egui::FontId::proportional(17.0)),
-            (egui::TextStyle::Heading, egui::FontId::proportional(25.0)),
-            (egui::TextStyle::Monospace, egui::FontId::proportional(16.0)),
+            (egui::TextStyle::Small, egui::FontId::proportional(16.0)),
+            (egui::TextStyle::Body, egui::FontId::proportional(19.0)),
+            (egui::TextStyle::Button, egui::FontId::proportional(18.0)),
+            (egui::TextStyle::Heading, egui::FontId::proportional(28.0)),
+            (egui::TextStyle::Monospace, egui::FontId::proportional(18.0)),
         ]
         .into();
-        style.spacing.item_spacing = egui::vec2(8.0, 6.0);
+        style.spacing.item_spacing = egui::vec2(10.0, 8.0);
         cc.egui_ctx.set_style(style);
         let mut visuals = egui::Visuals::light();
         visuals.selection.bg_fill = egui::Color32::from_rgb(0xdf, 0xec, 0xfb);
@@ -1255,13 +1300,13 @@ impl eframe::App for App {
                 ui.horizontal(|ui| {
                     ui.add(
                         egui::Image::from_bytes("logo.png", LOGO_PNG)
-                            .fit_to_exact_size(egui::vec2(50.0, 50.0)),
+                            .fit_to_exact_size(egui::vec2(56.0, 56.0)),
                     );
                     ui.add_space(6.0);
                     ui.vertical(|ui| {
                         ui.label(
                             egui::RichText::new(APP_NAME)
-                                .size(25.0)
+                                .size(30.0)
                                 .strong()
                                 .color(egui::Color32::WHITE),
                         );
@@ -1275,7 +1320,7 @@ impl eframe::App for App {
                                     self.b.meta_update.clone()
                                 }
                             ))
-                            .size(13.5)
+                            .size(15.0)
                             .color(egui::Color32::from_rgb(0xdf, 0xea, 0xf7)),
                         );
                     });
@@ -1288,7 +1333,7 @@ impl eframe::App for App {
                 Some((m, t)) if t.elapsed().as_secs() < 3 => m.clone(),
                 _ => format!("数据已内嵌 · 单文件离线运行 · 版本 {}", VERSION),
             };
-            ui.label(egui::RichText::new(msg).size(13.0).color(SUB));
+            ui.label(egui::RichText::new(msg).size(14.0).color(SUB));
         });
 
         // 中央面板
@@ -1336,12 +1381,12 @@ impl eframe::App for App {
 
                 // 省份快速入口
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(egui::RichText::new("按省份快速查：").size(14.0).color(SUB));
+                    ui.label(egui::RichText::new("按省份快速查：").size(15.5).color(SUB));
                     for p in &self.b.admin_names {
                         let active = self.prov_active.as_deref() == Some(p.as_str());
                         let btn = egui::Button::new(
                             egui::RichText::new(p)
-                                .size(14.0)
+                                .size(15.5)
                                 .color(if active {
                                     egui::Color32::WHITE
                                 } else {
@@ -1521,8 +1566,8 @@ fn render_screen(
 
 fn render_card(ui: &mut egui::Ui, card: &Card, flash: &mut Option<(String, std::time::Instant)>) {
     // 标题 + 副标题
-    ui.label(egui::RichText::new(&card.title).size(23.0).strong().color(BRAND_D));
-    ui.label(egui::RichText::new(&card.subtitle).size(14.0).color(SUB));
+    ui.label(egui::RichText::new(&card.title).size(26.0).strong().color(BRAND_D));
+    ui.label(egui::RichText::new(&card.subtitle).size(15.5).color(SUB));
     ui.add_space(4.0);
 
     // 说明块（继承说明=橙色底；大学提示=蓝底）
@@ -1540,10 +1585,10 @@ fn render_card(ui: &mut egui::Ui, card: &Card, flash: &mut Option<(String, std::
         };
         egui::Frame::NONE
             .fill(bg)
-            .inner_margin(egui::Margin::same(8))
+            .inner_margin(egui::Margin::same(10))
             .corner_radius(egui::CornerRadius::same(6))
             .show(ui, |ui| {
-                ui.label(egui::RichText::new(intro).size(14.5).color(fg));
+                ui.label(egui::RichText::new(intro).size(15.5).color(fg));
             });
         ui.add_space(4.0);
     }
@@ -1557,7 +1602,7 @@ fn render_card(ui: &mut egui::Ui, card: &Card, flash: &mut Option<(String, std::
         };
         egui::Frame::NONE
             .fill(egui::Color32::from_rgb(0xf4, 0xf9, 0xf4))
-            .inner_margin(egui::Margin::same(6))
+            .inner_margin(egui::Margin::same(8))
             .corner_radius(egui::CornerRadius::same(6))
             .show(ui, |ui| {
                 ui.label(egui::RichText::new(&cd.text).strong().color(color));
@@ -1568,7 +1613,7 @@ fn render_card(ui: &mut egui::Ui, card: &Card, flash: &mut Option<(String, std::
     // 字段行（两列网格）
     egui::Grid::new("card_rows")
         .num_columns(2)
-        .spacing([14.0, 8.0])
+        .spacing([16.0, 10.0])
         .striped(true)
         .show(ui, |ui| {
             for (k, v) in &card.rows {
@@ -1580,10 +1625,11 @@ fn render_card(ui: &mut egui::Ui, card: &Card, flash: &mut Option<(String, std::
     ui.add_space(4.0);
 
     // 复制信息（替代网页版的分享图导出，桌面端直接进剪贴板）
+    // 注意：不使用 emoji（如 📋），内嵌字体与系统字体均无此字形会显示为 □
     if ui
         .add(
             egui::Button::new(
-                egui::RichText::new("📋 复制信息（可粘贴到微信发给村民）").color(egui::Color32::WHITE),
+                egui::RichText::new("复制信息（可粘贴到微信发给村民）").color(egui::Color32::WHITE),
             )
             .fill(BRAND),
         )
@@ -1600,14 +1646,14 @@ fn render_card(ui: &mut egui::Ui, card: &Card, flash: &mut Option<(String, std::
     // 来源与免责
     ui.label(
         egui::RichText::new(format!("数据来源：{}", card.source))
-            .size(13.0)
+            .size(14.0)
             .color(SUB),
     );
     ui.label(
         egui::RichText::new(
             "本工具为便民信息汇总，非官方经办渠道，不提供参保登记、报销申请、账户查询等医保经办服务，具体以当地医保局通告为准。",
         )
-        .size(13.0)
+        .size(14.0)
         .color(SUB),
     );
 }
@@ -1721,6 +1767,24 @@ mod tests {
         let d = b.get_subsidy("不存在的地方", &[]);
         assert_eq!(d, b.subsidy_default);
     }
+
+    #[test]
+    fn test_cjk_font_embedded() {
+        // 内嵌字体必须存在且是合法 sfnt（否则界面中文会变 □）
+        assert!(CJK_FONT.len() > 500_000, "内嵌中文字体缺失或过小");
+        let magic = u32::from_be_bytes([
+            CJK_FONT[0],
+            CJK_FONT[1],
+            CJK_FONT[2],
+            CJK_FONT[3],
+        ]);
+        assert!(
+            magic == 0x0001_0000
+                || magic == u32::from_be_bytes(*b"OTTO")
+                || magic == u32::from_be_bytes(*b"true"),
+            "内嵌字体不是合法 sfnt 文件"
+        );
+    }
 }
 
 // ================= 入口 =================
@@ -1729,8 +1793,8 @@ fn main() -> eframe::Result<()> {
     let icon = eframe::icon_data::from_png_bytes(LOGO_PNG).expect("窗口图标加载失败");
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([940.0, 800.0])
-            .with_min_inner_size([620.0, 500.0])
+            .with_inner_size([1000.0, 820.0])
+            .with_min_inner_size([680.0, 540.0])
             .with_icon(icon),
         ..Default::default()
     };

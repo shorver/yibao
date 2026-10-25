@@ -11,6 +11,12 @@ header{background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff
 header h1{margin:0 0 6px;font-size:26px;font-weight:800;letter-spacing:1px}
 .meta{font-size:15px;opacity:.92;margin-bottom:8px}
 .tip{font-size:14px;opacity:.9;margin:0;line-height:1.5}
+/* 刷新 */
+.refresh-row{display:flex;align-items:center;gap:10px;margin:8px 0 2px;flex-wrap:wrap}
+.refresh{font-size:15px;font-weight:700;padding:8px 16px;border:1px solid rgba(255,255,255,.55);
+  border-radius:20px;background:#fff;color:var(--brand);cursor:pointer}
+.refresh:disabled{opacity:.55;cursor:not-allowed}
+.mode-tip{font-size:13px;opacity:.92}
 .wrap{max-width:880px;margin:0 auto;padding:14px 14px 60px}
 section{margin-top:20px}
 .h2{font-size:20px;font-weight:800;margin:0 0 12px;display:flex;align-items:center;gap:8px}

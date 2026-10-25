@@ -1,11 +1,34 @@
 // 2027年度城乡居民医保征缴查询 — 前端逻辑
+// 数据优先从 ./data.json 异步加载（支持刷新）；file:// 双击打开时降级到全局 <script> 变量。
 (function () {
   'use strict';
+
+  // —— 可变数据（applyData 时赋值）——
+  var META, NATIONAL, ADMIN, REAL, UNIVERSITIES, ALIASES, UNI_FEE;
+  var nodes = [], byName = {}, uniIdx = [], aliasByNew = {};
+  var currentMode = 'local'; // 'net' = 已联网加载 data.json（可刷新）；'local' = 静态降级
   var MUNI = { '北京市': 1, '天津市': 1, '上海市': 1, '重庆市': 1 };
   var LV = { province: '省/直辖市', city: '地级市', county: '区/县' };
 
-  // 1) 构建扁平索引 nodes
-  var nodes = [];
+  // —— DOM 引用（元素静态存在，一次性获取）——
+  var $meta = document.getElementById('meta');
+  var $foot = document.getElementById('footUpdate');
+  var $foot2 = document.getElementById('footUpdate2');
+  var $footC = document.getElementById('footCreate');
+  var $footV = document.getElementById('footVer');
+  var $nat = document.getElementById('national');
+  var $prov = document.getElementById('provBar');
+  var $cand = document.getElementById('cand');
+  var $detail = document.getElementById('detail');
+  var $uq = document.getElementById('uq');
+  var $ucand = document.getElementById('ucand');
+  var $udetail = document.getElementById('udetail');
+  var $refresh = document.getElementById('refresh');
+  var $modeTip = document.getElementById('modeTip');
+
+  var DISCLAIMER = '<div class="disc">本工具为便民信息汇总，非官方经办渠道，不提供参保登记、报销申请、账户查询等医保经办服务，具体以当地医保局通告为准。</div>';
+
+  // ============ 数据加载与索引 ============
   function walk(list, level, province, city, ancestors) {
     list.forEach(function (n) {
       var lvl = level, c = city;
@@ -23,22 +46,77 @@
       }
     });
   }
-  walk(ADMIN, 'province', '', '', []);
-  var byName = {};
-  nodes.forEach(function (n) { (byName[n.name] = byName[n.name] || []).push(n); });
 
-  // 2) 详情解析：自身 -> 祖先链 逐级找最近 REAL
-  function getDetail(node) {
-    var chain = [node.name].concat(node.ancestors.slice().reverse());
-    for (var i = 0; i < chain.length; i++) {
-      if (REAL[chain[i]]) {
-        return { usedName: chain[i], usedLevel: REAL[chain[i]].level, data: REAL[chain[i]], inherited: chain[i] !== node.name };
-      }
-    }
-    return null;
+  function buildIndex() {
+    nodes = [];
+    walk(ADMIN, 'province', '', '', []);
+    byName = {};
+    nodes.forEach(function (n) { (byName[n.name] = byName[n.name] || []).push(n); });
+
+    aliasByNew = {};
+    (ALIASES || []).forEach(function (a) {
+      if (a && a.new && a.old && a.old.length) aliasByNew[a.new] = a;
+    });
+    uniIdx = (UNIVERSITIES || []).map(function (u) {
+      var al = aliasByNew[u.name];
+      var aliases = al ? (Array.isArray(al.old) ? al.old.slice() : [al.old]).filter(function (o) { return o && o !== u.name; }) : [];
+      var aliasText = aliases.join(' ');
+      return {
+        name: u.name, city: u.city, province: u.province, type: u.type,
+        aliases: aliases, aliasYear: al ? al.year : '', aliasKind: al ? al.kind : '',
+        key: (u.name + ' ' + u.city + ' ' + u.province + ' ' + aliasText).toLowerCase()
+      };
+    });
   }
 
-  // 3) 工具
+  function applyData(D, fromNet) {
+    META = D.META; NATIONAL = D.NATIONAL; ADMIN = D.ADMIN; REAL = D.REAL;
+    UNIVERSITIES = D.UNIVERSITIES; ALIASES = D.ALIASES; UNI_FEE = D.UNI_FEE;
+    buildIndex();
+    renderMeta();
+    renderNational();
+    renderProvinces();
+    showCandidates('浦江');
+    currentMode = fromNet ? 'net' : 'local';
+    updateModeUI();
+  }
+
+  function updateModeUI() {
+    if (!$refresh) return;
+    if (currentMode === 'net') {
+      $refresh.disabled = false;
+      if ($modeTip) $modeTip.textContent = '已联网加载，可点刷新获取最新数据';
+    } else {
+      $refresh.disabled = true;
+      if ($modeTip) $modeTip.textContent = '当前为本地静态模式，部署到服务器后可刷新';
+    }
+  }
+
+  async function load() {
+    try {
+      var res = await fetch('./data.json?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var D = await res.json();
+      applyData(D, true);
+    } catch (e) {
+      if (window.__DATA) {
+        applyData(window.__DATA, false);
+      } else {
+        if ($detail) $detail.innerHTML = '<div class="empty">数据加载失败：请通过本地服务器或部署后访问（直接双击打开需保留 data.js 等文件）。</div>';
+        if ($udetail) $udetail.innerHTML = '<div class="empty">数据加载失败。</div>';
+      }
+    }
+  }
+
+  // ============ 渲染 ============
+  function renderMeta() {
+    if ($meta) $meta.textContent = '版本 ' + (META.version || '') + ' ｜ 数据更新时间：' + (META.update || '') + ' ｜ 集中征缴期多为 2026年9月—12月25日';
+    if ($foot) $foot.textContent = META.update;
+    if ($foot2) $foot2.textContent = META.update;
+    if ($footC) $footC.textContent = META.createTime;
+    if ($footV) $footV.textContent = META.version;
+  }
+
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (m) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]; }); }
   function telify(s) {
@@ -48,40 +126,45 @@
       return '<a class="tel" href="tel:' + num + '">' + m + '</a>';
     });
   }
+  function row(k, v, isTel) {
+    if (!v) return '';
+    return '<div class="row"><div class="k">' + k + '</div><div class="v">' + (isTel ? telify(v) : esc(v)) + '</div></div>';
+  }
 
-  // 4) 渲染
-  var $meta = document.getElementById('meta');
-  $meta.textContent = '版本 ' + META.version + ' ｜ 数据更新时间：' + META.update + ' ｜ 集中征缴期多为 2026年9月—12月25日';
-  var $foot = document.getElementById('footUpdate');
-  if ($foot) $foot.textContent = META.update;
-  var $foot2 = document.getElementById('footUpdate2');
-  if ($foot2) $foot2.textContent = META.update;
-  var $footC = document.getElementById('footCreate');
-  if ($footC) $footC.textContent = META.createTime;
-  var $footV = document.getElementById('footVer');
-  if ($footV) $footV.textContent = META.version;
+  function renderNational() {
+    if (!$nat) return;
+    $nat.innerHTML = '';
+    (NATIONAL || []).forEach(function (n) {
+      var d = document.createElement('div'); d.className = 'nat';
+      d.innerHTML = '<b>' + esc(n.name) + '</b><p>' + esc(n.desc) + '</p>';
+      $nat.appendChild(d);
+    });
+  }
 
-  // 免责声明（每张详情卡底部固定展示）
-  var DISCLAIMER = '<div class="disc">本工具为便民信息汇总，非官方经办渠道，不提供参保登记、报销申请、账户查询等医保经办服务，具体以当地医保局通告为准。</div>';
+  function renderProvinces() {
+    if (!$prov) return;
+    $prov.innerHTML = '';
+    (ADMIN || []).forEach(function (p) {
+      var b = document.createElement('div'); b.className = 'prov'; b.textContent = p.name;
+      b.onclick = function () {
+        showProvince(p.name);
+        var all = document.querySelectorAll('.prov');
+        for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
+        b.classList.add('active');
+      };
+      $prov.appendChild(b);
+    });
+  }
 
-  // 全国通用
-  var $nat = document.getElementById('national');
-  NATIONAL.forEach(function (n) {
-    var d = document.createElement('div'); d.className = 'nat';
-    d.innerHTML = '<b>' + esc(n.name) + '</b><p>' + esc(n.desc) + '</p>';
-    $nat.appendChild(d);
-  });
-
-  // 省份栏
-  var $prov = document.getElementById('provBar');
-  ADMIN.forEach(function (p) {
-    var b = document.createElement('div'); b.className = 'prov'; b.textContent = p.name;
-    b.onclick = function () { showProvince(p.name); document.querySelectorAll('.prov').forEach(function (x) { x.classList.remove('active'); }); b.classList.add('active'); };
-    $prov.appendChild(b);
-  });
-
-  var $cand = document.getElementById('cand');
-  var $detail = document.getElementById('detail');
+  function getDetail(node) {
+    var chain = [node.name].concat(node.ancestors.slice().reverse());
+    for (var i = 0; i < chain.length; i++) {
+      if (REAL[chain[i]]) {
+        return { usedName: chain[i], usedLevel: REAL[chain[i]].level, data: REAL[chain[i]], inherited: chain[i] !== node.name };
+      }
+    }
+    return null;
+  }
 
   function showCandidates(kw) {
     kw = (kw || '').trim();
@@ -111,10 +194,6 @@
       html += '<div class="inherit">以下为【' + esc(res.usedName) + '】统一征缴标准。该地（' + esc(node.name) +
         '）未单独发布独立通告，具体缴费标准、起止时间、资助政策以当地最新通告为准。</div>';
     }
-    function row(k, v, isTel) {
-      if (!v) return '';
-      return '<div class="row"><div class="k">' + k + '</div><div class="v">' + (isTel ? telify(v) : esc(v)) + '</div></div>';
-    }
     html += row('医保咨询', d.medical, true);
     html += row('税务缴费', d.tax, true);
     html += row('2027个人缴费', d.fee);
@@ -131,14 +210,13 @@
 
   function showProvince(pname) {
     $cand.innerHTML = '';
-    var prov = ADMIN.filter(function (p) { return p.name === pname; })[0];
+    var prov = (ADMIN || []).filter(function (p) { return p.name === pname; })[0];
     if (!prov) return;
     var res = REAL[pname];
     var html = '';
     html += '<div class="detail"><div class="head"><div class="t">' + esc(pname) + '（全省/市通用）</div>' +
       '<div class="s">省级征缴总览</div></div>';
     if (res) {
-      function row(k, v, isTel) { if (!v) return ''; return '<div class="row"><div class="k">' + k + '</div><div class="v">' + (isTel ? telify(v) : esc(v)) + '</div></div>'; }
       html += row('医保咨询', res.medical, true);
       html += row('税务缴费', res.tax, true);
       html += row('2027个人缴费', res.fee);
@@ -149,7 +227,6 @@
       html += '<div class="src">数据来源：' + esc(res.source || '各地医保局/税务局公开通告') + '</div>';
       html += DISCLAIMER;
     }
-    // 该省地级市列表
     var cities = (prov.children || []);
     html += '<div style="padding:12px 16px;border-top:1px solid var(--line)"><div class="k" style="font-weight:700;color:var(--brand-d)">下辖地区（点击查看/继承标准）：</div><div class="city-list">';
     cities.forEach(function (c) {
@@ -159,7 +236,6 @@
     });
     html += '</div></div></div>';
     $detail.innerHTML = html;
-    // 绑定市点击
     Array.prototype.forEach.call($detail.querySelectorAll('.city-chip'), function (chip) {
       chip.onclick = function () {
         var name = chip.getAttribute('data-c');
@@ -170,36 +246,7 @@
     $detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // 5) 事件
-  var $q = document.getElementById('q');
-  document.getElementById('go').onclick = function () { showCandidates($q.value); };
-  $q.addEventListener('input', function () { showCandidates($q.value); });
-  $q.addEventListener('keydown', function (e) { if (e.key === 'Enter') showCandidates($q.value); });
-
   // ===== 大学查询 =====
-  var $uq = document.getElementById('uq');
-  var $ucand = document.getElementById('ucand');
-  var $udetail = document.getElementById('udetail');
-
-  // 高校索引（按校名、所在地、旧校名检索）
-  // 旧校名经 ALIASES（aliases.js）映射：把现名条目的旧名并入 key，搜旧名即可命中现名条目。
-  var aliasByNew = {};
-  if (typeof ALIASES !== 'undefined') {
-    (ALIASES || []).forEach(function (a) {
-      if (a && a.new && a.old && a.old.length) aliasByNew[a.new] = a;
-    });
-  }
-  var uniIdx = (typeof UNIVERSITIES !== 'undefined' ? UNIVERSITIES : []).map(function (u) {
-    var al = aliasByNew[u.name];
-    var aliases = al ? (Array.isArray(al.old) ? al.old.slice() : [al.old]).filter(function (o) { return o && o !== u.name; }) : [];
-    var aliasText = aliases.join(' ');
-    return {
-      name: u.name, city: u.city, province: u.province, type: u.type,
-      aliases: aliases, aliasYear: al ? al.year : '', aliasKind: al ? al.kind : '',
-      key: (u.name + ' ' + u.city + ' ' + u.province + ' ' + aliasText).toLowerCase()
-    };
-  });
-
   function resolveReal(name) {
     var tries = [name, name.replace(/市$/, ''), name + '市'];
     for (var i = 0; i < tries.length; i++) { if (REAL[tries[i]]) return REAL[tries[i]]; }
@@ -235,7 +282,7 @@
     $ucand.innerHTML = '';
     var provReal = REAL[u.province] || null;
     var cityReal = resolveReal(u.city);
-    var feeObj = (typeof UNI_FEE !== 'undefined') ? UNI_FEE[u.city] : null;
+    var feeObj = UNI_FEE[u.city];
     var isChengren = (u.type === 'chengren');
     var fee, period, online, note, source, provFallback = false;
     if (isChengren) {
@@ -252,11 +299,6 @@
 
     var phone = (cityReal && cityReal.medical) || (provReal && provReal.medical) || '';
     var tax = (cityReal && cityReal.tax) || (provReal && provReal.tax) || '';
-
-    function row(k, v, isTel) {
-      if (!v) return '';
-      return '<div class="row"><div class="k">' + k + '</div><div class="v">' + (isTel ? telify(v) : esc(v)) + '</div></div>';
-    }
     var level = u.type === 'vocational' ? '高职（专科）' : (u.type === 'chengren' ? '成人高校' : '本科');
     var html = '';
     html += '<div class="detail"><div class="head"><div class="t">' + esc(u.name) + '</div>' +
@@ -287,25 +329,38 @@
     $udetail.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  document.getElementById('ugo').onclick = function () { showUniCandidates($uq.value); };
-  $uq.addEventListener('input', function () { showUniCandidates($uq.value); });
-  $uq.addEventListener('keydown', function (e) { if (e.key === 'Enter') showUniCandidates($uq.value); });
-
   // ===== 页签切换 =====
   var $tabRegion = document.getElementById('tabRegion');
   var $tabUni = document.getElementById('tabUni');
   var $regionPanel = document.getElementById('regionPanel');
   var $uniPanel = document.getElementById('uniPanel');
-  $tabRegion.onclick = function () {
-    $tabRegion.classList.add('active'); $tabUni.classList.remove('active');
-    $regionPanel.style.display = ''; $uniPanel.style.display = 'none';
-  };
-  $tabUni.onclick = function () {
-    $tabUni.classList.add('active'); $tabRegion.classList.remove('active');
-    $uniPanel.style.display = ''; $regionPanel.style.display = 'none';
-    $uq.focus();
-  };
 
-  // 默认展示用户所在地（浙江/浦江）提示
-  showCandidates('浦江');
+  function bindEvents() {
+    document.getElementById('go').onclick = function () { showCandidates($q.value); };
+    $q.addEventListener('input', function () { showCandidates($q.value); });
+    $q.addEventListener('keydown', function (e) { if (e.key === 'Enter') showCandidates($q.value); });
+
+    document.getElementById('ugo').onclick = function () { showUniCandidates($uq.value); };
+    $uq.addEventListener('input', function () { showUniCandidates($uq.value); });
+    $uq.addEventListener('keydown', function (e) { if (e.key === 'Enter') showUniCandidates($uq.value); });
+
+    $tabRegion.onclick = function () {
+      $tabRegion.classList.add('active'); $tabUni.classList.remove('active');
+      $regionPanel.style.display = ''; $uniPanel.style.display = 'none';
+    };
+    $tabUni.onclick = function () {
+      $tabUni.classList.add('active'); $tabRegion.classList.remove('active');
+      $uniPanel.style.display = ''; $regionPanel.style.display = 'none';
+      $uq.focus();
+    };
+
+    if ($refresh) $refresh.onclick = function () {
+      if (currentMode === 'net') { load(); }
+      else if ($modeTip) { $modeTip.textContent = '本地静态模式无法刷新，请部署到服务器后访问'; }
+    };
+  }
+
+  // 启动
+  bindEvents();
+  load();
 })();

@@ -10,7 +10,7 @@
 const META = {
   "title": "蚂蚁哥医保查询",
   "year": "2027年度",
-  "version": "v1.0.0",
+  "version": "v1.0.1",
   "createTime": "2026-10-24",
   "update": "2026-10-24",
   "author": "浦江蚂蚁哥",

@@ -21,18 +21,38 @@ const SKILL_DATA = path.join(__dirname, '..', 'data');
 function resolveFile(file) {
   const cands = [path.join(PROJECT_DIR, file), path.join(SKILL_DATA, file)];
   for (const p of cands) if (fs.existsSync(p)) return p;
-  throw new Error('数据文件未找到: ' + file + '\n已尝试：\n  ' + cands.join('\n  '));
+  return null;
 }
 function loadVars(file, vars) {
-  const code = fs.readFileSync(resolveFile(file), 'utf8');
+  const p = resolveFile(file);
+  if (!p) throw new Error('数据文件未找到: ' + file);
+  const code = fs.readFileSync(p, 'utf8');
   const expr = code + '\nreturn {' + vars.map(v => v + ':' + v).join(',') + '};';
   return new Function(expr)();
 }
 
-const { META, NATIONAL, ADMIN, REAL } = loadVars('data.js', ['META', 'NATIONAL', 'ADMIN', 'REAL']);
-const { UNIVERSITIES } = loadVars('universities.js', ['UNIVERSITIES']);
-const { UNI_FEE } = loadVars('uni_fee.js', ['UNI_FEE']);
-const { ALIASES } = loadVars('aliases.js', ['ALIASES']);
+// 优先 data.json（网页版与 skill 共用的单一权威数据源）；
+// 回退到分散的 data.js / universities.js / aliases.js / uni_fee.js。
+function loadBundle() {
+  const jsonCands = [path.join(PROJECT_DIR, 'data.json'), path.join(SKILL_DATA, 'data.json')];
+  for (const p of jsonCands) {
+    if (fs.existsSync(p)) {
+      const bundle = JSON.parse(fs.readFileSync(p, 'utf8'));
+      return { bundle, src: p };
+    }
+  }
+  const bundle = Object.assign(
+    loadVars('data.js', ['META', 'NATIONAL', 'ADMIN', 'REAL']),
+    loadVars('universities.js', ['UNIVERSITIES']),
+    loadVars('aliases.js', ['ALIASES']),
+    loadVars('uni_fee.js', ['UNI_FEE'])
+  );
+  return { bundle, src: '分散的 data.js 等（JS 回退）' };
+}
+
+const { bundle: B, src: BUNDLE_SRC } = loadBundle();
+const META = B.META, NATIONAL = B.NATIONAL, ADMIN = B.ADMIN, REAL = B.REAL;
+const UNIVERSITIES = B.UNIVERSITIES, ALIASES = B.ALIASES, UNI_FEE = B.UNI_FEE;
 
 const YEAR = META.year || '2027年度';
 
@@ -174,15 +194,14 @@ if (!mode || mode === 'help' || mode === '-h' || mode === '--help') {
   console.log(help()); process.exit(0);
 }
 if (mode === '数据源' || mode === 'source') {
-  const files = ['data.js', 'universities.js', 'aliases.js', 'uni_fee.js'];
   let out = '【蚂蚁哥医保查询 — 数据加载来源】\n';
-  for (const f of files) {
+  out += '  主数据源：' + (BUNDLE_SRC || '(未加载)') + '\n';
+  for (const f of ['data.json', 'data.js']) {
     const p = resolveFile(f);
-    const isProj = p === path.join(PROJECT_DIR, f);
-    out += '  ' + (isProj ? '[网页版] ' : '[skill自带] ') + f + '  ->  ' + p + '\n';
+    if (p) out += '  ✓ ' + f + '  ->  ' + p + '\n';
   }
   out += '\n网页版项目目录（可用环境变量 YIBAO_PROJECT_DIR 覆盖）：\n  ' + PROJECT_DIR + '\n';
-  out += '说明：本地优先读取网页版项目数据（单一数据源），skill 自带 data/ 仅作分发/离线兜底。';
+  out += '说明：本地优先读取网页版项目 data.json（单一权威数据源），skill 自带 data/data.json 仅作分发/离线兜底。';
   console.log(out); process.exit(0);
 }
 if (mode === '全国' || mode === 'national') {

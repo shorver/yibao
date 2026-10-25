@@ -1,4 +1,4 @@
-// 蚂蚁哥医保查询 v1.0.5 — 原生 GUI 单文件版（Rust + egui）
+// 蚂蚁哥医保查询 v1.0.6 — 原生 GUI 单文件版（Rust + egui）
 // 数据与检索逻辑完整移植自网页版 app.js（智能搜索 / 层级判定 / 重名候选 /
 // 全文回退 / 缴费截止倒计时 / 资助参保对象继承 / 大学生医保标准解析）。
 // 全部资源（data.json 与图标）编译期内嵌，双击即用，不弹浏览器、不依赖网络。
@@ -13,7 +13,7 @@ use eframe::egui;
 use regex::Regex;
 use serde_json::{Map, Value};
 
-const VERSION: &str = "1.0.5";
+const VERSION: &str = "1.0.6";
 const APP_NAME: &str = "蚂蚁哥医保查询";
 static DATA_JSON: &[u8] = include_bytes!("../assets/data.json");
 static LOGO_PNG: &[u8] = include_bytes!("../assets/icon/icon_256.png");
@@ -1184,6 +1184,44 @@ impl Bundle {
 
 // ================= 应用 =================
 
+/// PNG 图片加载器。egui 0.31 默认不安装任何图片解码器，
+/// 不装它 logo 会显示红色警告三角并提示 "No image loaders are installed"。
+struct PngLoader;
+
+impl egui::load::ImageLoader for PngLoader {
+    fn id(&self) -> &str {
+        concat!(module_path!(), "::PngLoader")
+    }
+
+    fn load(
+        &self,
+        ctx: &egui::Context,
+        uri: &str,
+        _size_hint: egui::load::SizeHint,
+    ) -> egui::load::ImageLoadResult {
+        // bytes:// 前缀由 Image::from_bytes 注册进 DefaultBytesLoader
+        let bytes = match ctx.try_load_bytes(uri)? {
+            egui::load::BytesPoll::Ready { bytes, .. } => bytes,
+            egui::load::BytesPoll::Pending { .. } => {
+                return Ok(egui::load::ImagePoll::Pending { size: None })
+            }
+        };
+        let img = image::load_from_memory(&bytes)
+            .map_err(|e| egui::load::LoadError::Loading(e.to_string()))?;
+        let size = [img.width() as usize, img.height() as usize];
+        let rgba = img.to_rgba8().into_raw();
+        Ok(egui::load::ImagePoll::Ready {
+            image: std::sync::Arc::new(egui::ColorImage::from_rgba_unmultiplied(size, &rgba)),
+        })
+    }
+
+    fn forget(&self, _uri: &str) {}
+    fn forget_all(&self) {}
+    fn byte_size(&self) -> usize {
+        0
+    }
+}
+
 /// 安装中文字体：内嵌子集置首位（自包含，任何机器中文不乱码），
 /// 系统黑体追加兜底（覆盖子集外的生僻字/繁体，取不到也不影响）。
 fn install_cjk_fonts(ctx: &egui::Context) {
@@ -1231,23 +1269,26 @@ struct App {
     uni_screen: Screen,
     prov_active: Option<String>,
     flash: Option<(String, std::time::Instant)>,
+    sized: bool, // 首帧按 DPI 锁定物理窗口尺寸，避免被系统缩放裁切
 }
 
 impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> App {
         // 中文字体必须最先安装，否则界面中文全部显示为 □
         install_cjk_fonts(&cc.egui_ctx);
-        // 适老化大字号 + 浅色主题
+        // PNG 解码器（logo 显示用）
+        cc.egui_ctx.add_image_loader(std::sync::Arc::new(PngLoader));
+        // 适老化大字号 + 浅色主题（正文与卡片标题同级，用户要求）
         let mut style = (*cc.egui_ctx.style()).clone();
         style.text_styles = [
-            (egui::TextStyle::Small, egui::FontId::proportional(16.0)),
-            (egui::TextStyle::Body, egui::FontId::proportional(19.0)),
-            (egui::TextStyle::Button, egui::FontId::proportional(18.0)),
-            (egui::TextStyle::Heading, egui::FontId::proportional(28.0)),
-            (egui::TextStyle::Monospace, egui::FontId::proportional(18.0)),
+            (egui::TextStyle::Small, egui::FontId::proportional(20.0)),
+            (egui::TextStyle::Body, egui::FontId::proportional(28.0)),
+            (egui::TextStyle::Button, egui::FontId::proportional(28.0)),
+            (egui::TextStyle::Heading, egui::FontId::proportional(30.0)),
+            (egui::TextStyle::Monospace, egui::FontId::proportional(28.0)),
         ]
         .into();
-        style.spacing.item_spacing = egui::vec2(10.0, 8.0);
+        style.spacing.item_spacing = egui::vec2(12.0, 10.0);
         cc.egui_ctx.set_style(style);
         let mut visuals = egui::Visuals::light();
         visuals.selection.bg_fill = egui::Color32::from_rgb(0xdf, 0xec, 0xfb);
@@ -1265,6 +1306,7 @@ impl App {
             uni_screen: Screen::Empty,
             prov_active: None,
             flash: None,
+            sized: false,
         }
     }
 
@@ -1289,24 +1331,37 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // 首帧：按系统 DPI 把窗口物理尺寸锁定在屏幕可用区内，
+        // 否则高 DPI 缩放下逻辑尺寸被放大后会超出 1920x1080 被裁切。
+        if !self.sized {
+            self.sized = true;
+            let ppp = ctx.pixels_per_point();
+            // 目标物理像素（适配 1920x1080，四周留边距）
+            let phys_w = 1180.0;
+            let phys_h = 1020.0;
+            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(
+                phys_w / ppp,
+                phys_h / ppp,
+            )));
+        }
         // 顶部品牌栏（蓝底白字 + 图标）
         egui::TopBottomPanel::top("brand")
             .frame(
                 egui::Frame::NONE
                     .fill(BRAND)
-                    .inner_margin(egui::Margin::symmetric(14, 12)),
+                    .inner_margin(egui::Margin::symmetric(12, 10)),
             )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     ui.add(
                         egui::Image::from_bytes("logo.png", LOGO_PNG)
-                            .fit_to_exact_size(egui::vec2(56.0, 56.0)),
+                            .fit_to_exact_size(egui::vec2(44.0, 44.0)),
                     );
                     ui.add_space(6.0);
                     ui.vertical(|ui| {
                         ui.label(
                             egui::RichText::new(APP_NAME)
-                                .size(30.0)
+                                .size(26.0)
                                 .strong()
                                 .color(egui::Color32::WHITE),
                         );
@@ -1320,7 +1375,7 @@ impl eframe::App for App {
                                     self.b.meta_update.clone()
                                 }
                             ))
-                            .size(15.0)
+                            .size(14.0)
                             .color(egui::Color32::from_rgb(0xdf, 0xea, 0xf7)),
                         );
                     });
@@ -1333,7 +1388,7 @@ impl eframe::App for App {
                 Some((m, t)) if t.elapsed().as_secs() < 3 => m.clone(),
                 _ => format!("数据已内嵌 · 单文件离线运行 · 版本 {}", VERSION),
             };
-            ui.label(egui::RichText::new(msg).size(14.0).color(SUB));
+            ui.label(egui::RichText::new(msg).size(18.0).color(SUB));
         });
 
         // 中央面板
@@ -1341,13 +1396,19 @@ impl eframe::App for App {
             // 页签
             ui.horizontal(|ui| {
                 if ui
-                    .selectable_label(self.tab == 0, " 查地区（省/市/区/县）")
+                    .selectable_label(
+                        self.tab == 0,
+                        egui::RichText::new(" 查地区（省/市/区/县）").size(26.0),
+                    )
                     .clicked()
                 {
                     self.tab = 0;
                 }
                 if ui
-                    .selectable_label(self.tab == 1, " 查大学（大学生医保）")
+                    .selectable_label(
+                        self.tab == 1,
+                        egui::RichText::new(" 查大学（大学生医保）").size(26.0),
+                    )
                     .clicked()
                 {
                     self.tab = 1;
@@ -1365,8 +1426,9 @@ impl eframe::App for App {
                 ui.horizontal(|ui| {
                     let resp = ui.add(
                         egui::TextEdit::singleline(&mut self.query)
+                            .font(egui::FontId::proportional(28.0))
                             .hint_text("输入省/市/区县或大学名，智能识别，如：浙江、金华、浦江、浙江大学…")
-                            .desired_width(ui.available_width() - 76.0),
+                            .desired_width(ui.available_width() - 100.0),
                     );
                     if resp.changed() {
                         self.prov_active = None;
@@ -1381,12 +1443,12 @@ impl eframe::App for App {
 
                 // 省份快速入口
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(egui::RichText::new("按省份快速查：").size(15.5).color(SUB));
+                    ui.label(egui::RichText::new("按省份快速查：").size(12.0).color(SUB));
                     for p in &self.b.admin_names {
                         let active = self.prov_active.as_deref() == Some(p.as_str());
                         let btn = egui::Button::new(
                             egui::RichText::new(p)
-                                .size(15.5)
+                                .size(12.0)
                                 .color(if active {
                                     egui::Color32::WHITE
                                 } else {
@@ -1408,16 +1470,20 @@ impl eframe::App for App {
                 ui.add_space(2.0);
 
                 // 全国通用缴费方式（折叠）
-                egui::CollapsingHeader::new(egui::RichText::new("全国通用缴费方式").strong())
-                    .id_salt("nat")
-                    .show(ui, |ui| {
-                        for (name, desc) in &self.b.national {
-                            ui.horizontal_wrapped(|ui| {
-                                ui.label(egui::RichText::new(name).strong().color(BRAND_D));
-                                ui.label(egui::RichText::new(desc).color(INK));
-                            });
-                        }
-                    });
+                egui::CollapsingHeader::new(
+                    egui::RichText::new("全国通用缴费方式").size(22.0).strong(),
+                )
+                .id_salt("nat")
+                .show(ui, |ui| {
+                    for (name, desc) in &self.b.national {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(
+                                egui::RichText::new(name).size(18.0).strong().color(BRAND_D),
+                            );
+                            ui.label(egui::RichText::new(desc).size(18.0).color(INK));
+                        });
+                    }
+                });
                 ui.add_space(2.0);
 
                 egui::ScrollArea::vertical().show(ui, |ui| {
@@ -1427,8 +1493,9 @@ impl eframe::App for App {
                 ui.horizontal(|ui| {
                     let resp = ui.add(
                         egui::TextEdit::singleline(&mut self.uni_query)
+                            .font(egui::FontId::proportional(28.0))
                             .hint_text("如：浙江大学、深圳职业技术学院、黄河水利职业技术学院…")
-                            .desired_width(ui.available_width() - 76.0),
+                            .desired_width(ui.available_width() - 100.0),
                     );
                     if resp.changed() {
                         self.uni_screen = self.b.show_uni_candidates(&self.uni_query);
@@ -1566,8 +1633,8 @@ fn render_screen(
 
 fn render_card(ui: &mut egui::Ui, card: &Card, flash: &mut Option<(String, std::time::Instant)>) {
     // 标题 + 副标题
-    ui.label(egui::RichText::new(&card.title).size(26.0).strong().color(BRAND_D));
-    ui.label(egui::RichText::new(&card.subtitle).size(15.5).color(SUB));
+    ui.label(egui::RichText::new(&card.title).size(22.0).strong().color(BRAND_D));
+    ui.label(egui::RichText::new(&card.subtitle).size(12.0).color(SUB));
     ui.add_space(4.0);
 
     // 说明块（继承说明=橙色底；大学提示=蓝底）
@@ -1585,10 +1652,10 @@ fn render_card(ui: &mut egui::Ui, card: &Card, flash: &mut Option<(String, std::
         };
         egui::Frame::NONE
             .fill(bg)
-            .inner_margin(egui::Margin::same(10))
+            .inner_margin(egui::Margin::same(16))
             .corner_radius(egui::CornerRadius::same(6))
             .show(ui, |ui| {
-                ui.label(egui::RichText::new(intro).size(15.5).color(fg));
+                ui.label(egui::RichText::new(intro).size(16.0).color(fg));
             });
         ui.add_space(4.0);
     }
@@ -1602,7 +1669,7 @@ fn render_card(ui: &mut egui::Ui, card: &Card, flash: &mut Option<(String, std::
         };
         egui::Frame::NONE
             .fill(egui::Color32::from_rgb(0xf4, 0xf9, 0xf4))
-            .inner_margin(egui::Margin::same(8))
+            .inner_margin(egui::Margin::same(14))
             .corner_radius(egui::CornerRadius::same(6))
             .show(ui, |ui| {
                 ui.label(egui::RichText::new(&cd.text).strong().color(color));
@@ -1613,12 +1680,15 @@ fn render_card(ui: &mut egui::Ui, card: &Card, flash: &mut Option<(String, std::
     // 字段行（两列网格）
     egui::Grid::new("card_rows")
         .num_columns(2)
-        .spacing([16.0, 10.0])
+        .spacing([22.0, 7.0])
         .striped(true)
         .show(ui, |ui| {
             for (k, v) in &card.rows {
-                ui.label(egui::RichText::new(k).strong().color(BRAND_D));
-                ui.add(egui::Label::new(egui::RichText::new(v)).wrap_mode(egui::TextWrapMode::Wrap));
+                ui.label(egui::RichText::new(k).size(22.0).strong().color(BRAND_D));
+                ui.add(
+                    egui::Label::new(egui::RichText::new(v).size(22.0))
+                        .wrap_mode(egui::TextWrapMode::Wrap),
+                );
                 ui.end_row();
             }
         });
@@ -1629,7 +1699,9 @@ fn render_card(ui: &mut egui::Ui, card: &Card, flash: &mut Option<(String, std::
     if ui
         .add(
             egui::Button::new(
-                egui::RichText::new("复制信息（可粘贴到微信发给村民）").color(egui::Color32::WHITE),
+                egui::RichText::new("复制信息（可粘贴到微信发给村民）")
+                    .size(22.0)
+                    .color(egui::Color32::WHITE),
             )
             .fill(BRAND),
         )
@@ -1646,14 +1718,14 @@ fn render_card(ui: &mut egui::Ui, card: &Card, flash: &mut Option<(String, std::
     // 来源与免责
     ui.label(
         egui::RichText::new(format!("数据来源：{}", card.source))
-            .size(14.0)
+            .size(12.0)
             .color(SUB),
     );
     ui.label(
         egui::RichText::new(
             "本工具为便民信息汇总，非官方经办渠道，不提供参保登记、报销申请、账户查询等医保经办服务，具体以当地医保局通告为准。",
         )
-        .size(14.0)
+        .size(12.0)
         .color(SUB),
     );
 }
@@ -1793,8 +1865,8 @@ fn main() -> eframe::Result<()> {
     let icon = eframe::icon_data::from_png_bytes(LOGO_PNG).expect("窗口图标加载失败");
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1000.0, 820.0])
-            .with_min_inner_size([680.0, 540.0])
+            .with_inner_size([960.0, 800.0])
+            .with_min_inner_size([960.0, 700.0])
             .with_icon(icon),
         ..Default::default()
     };

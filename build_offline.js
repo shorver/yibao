@@ -63,6 +63,14 @@ html = mustReplace(
   'icon 180'
 );
 
+// 2b) 头部可见 Logo 转 data:URI（离线双击也能显示页面内图标）
+html = mustReplace(
+  html,
+  /<img class="logo" src="icon\/icon_180\.png\?v=[0-9.]+"[^>]*>/,
+  '<img class="logo" src="data:image/png;base64,' + readB64('icon/icon_180.png') + '" alt="蚂蚁哥医保查询图标" width="52" height="52">',
+  'header logo'
+);
+
 // 3) CSS 内联
 html = mustReplace(
   html,
@@ -122,6 +130,7 @@ html = html.replace('<footer class="foot">', panelHtml + '\n\n  <footer class="f
 var problems = [];
 if (/<script[^>]+src=/.test(html)) problems.push('残留外链 script');
 if (/<link[^>]+href="(?!data:)/.test(html)) problems.push('残留外链 link');
+if (/<img[^>]+src="(?!data:)/.test(html)) problems.push('残留外链 img');
 if (/\?v=[0-9.]+/.test(html)) problems.push('残留 ?v= 版本参数');
 REPOS.forEach(function (r) { if (html.indexOf(r.url) < 0) problems.push('缺少仓库地址 ' + r.name); });
 if (html.indexOf(VERSION) < 0) problems.push('缺少版本号 ' + VERSION);

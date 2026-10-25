@@ -1,6 +1,6 @@
 [package]
 name = "yibao"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2021"
 description = "蚂蚁哥医保查询 - 本地单文件版（内嵌网页版全部资源，双击即用）"
 authors = ["浦江蚂蚁哥 <shorver@163.com>"]

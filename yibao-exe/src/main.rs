@@ -14,7 +14,7 @@ use std::thread;
 include!(concat!(env!("OUT_DIR"), "/assets_map.rs"));
 
 const APP_NAME: &str = "蚂蚁哥医保查询";
-const VERSION: &str = "1.0.4";
+const VERSION: &str = "1.0.5";
 
 fn content_type(path: &str) -> &'static str {
     let p = path.to_ascii_lowercase();

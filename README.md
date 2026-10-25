@@ -30,6 +30,8 @@ python -m http.server 8000
 | icon/ | 小程序图标，SVG 源文件 + 各尺寸 PNG |
 | merge_voc.js / _gen_alias.js / build_data.py | 数据维护脚本，页面不加载 |
 | voc_*.js / ext_*.js / moe_*.xls | 高校数据源（教育部公布名单） |
+| yibao-query/ | WorkBuddy skill 源码（AI 查询助手形态）：SKILL.md + scripts/query.js + data/ + references/ |
+| yibao-query.zip | 官方 package_skill.py 校验通过的发布包，可导入 WorkBuddy 或上架技能库 |
 
 数据优先级：uni_fee.js 专项标准 → 市 REAL 大学生段 → 省级兜底；区县无独立数据时逐级向上继承。
 
@@ -41,6 +43,15 @@ python -m http.server 8000
 
 v1.0.0（2026-10-24 创建）
 制作人：浦江蚂蚁哥 shorver@163.com
+
+## WorkBuddy skill 版
+
+除网页版外，本项目还提供 AI 查询助手形态的 WorkBuddy skill（`yibao-query/`），让 WorkBuddy 在对话中直接回答医保查询问题，无需打开网页。
+
+- 触发：问「XX 市医保怎么缴」「XX 大学学生医保多少」时自动调用
+- 能力：地区查询（区县继承上级标准）、高校查询（支持旧校名别名反查）、全国通用缴费方式
+- 安装：在 WorkBuddy 客户端「技能中心 → 创作者/上传」导入 `yibao-query.zip`，或把 `yibao-query/` 目录放到用户级 skills 目录（`~/.workbuddy/skills/`）
+- 说明：skill 与网页版共用同一份 data.js / universities.js 等数据，`scripts/query.js` 为离线 Node 查询脚本，不联网
 
 ## 代码仓库
 

@@ -6,6 +6,7 @@
   // —— 可变数据（applyData 时赋值）——
   var META, NATIONAL, ADMIN, REAL, UNIVERSITIES, ALIASES, UNI_FEE, SUBSIDY_DEFAULT;
   var nodes = [], byName = {}, uniIdx = [], aliasByNew = {};
+  var cityNodes = [], countyNodes = [];
   var currentMode = 'local'; // 'net' = 已联网加载 data.json（可刷新）；'local' = 静态降级
   var MUNI = { '北京市': 1, '天津市': 1, '上海市': 1, '重庆市': 1 };
   var LV = { province: '省/直辖市', city: '地级市', county: '区/县' };
@@ -18,6 +19,7 @@
   var $footV = document.getElementById('footVer');
   var $nat = document.getElementById('national');
   var $prov = document.getElementById('provBar');
+  var $q = document.getElementById('q');
   var $cand = document.getElementById('cand');
   var $detail = document.getElementById('detail');
   var $uq = document.getElementById('uq');
@@ -67,6 +69,9 @@
         key: (u.name + ' ' + u.city + ' ' + u.province + ' ' + aliasText).toLowerCase()
       };
     });
+
+    cityNodes = nodes.filter(function (n) { return n.level === 'city'; });
+    countyNodes = nodes.filter(function (n) { return n.level === 'county'; });
   }
 
   function applyData(D, fromNet) {
@@ -77,7 +82,14 @@
     renderMeta();
     renderNational();
     renderProvinces();
-    showCandidates('浦江');
+    // 初始搜索：优先 URL ?q= 直达参数（便于分享具体查询链接），否则默认“浦江”
+    var q0 = '';
+    try {
+      var qm = /[?&]q=([^&]+)/.exec(window.location.search || '');
+      if (qm) q0 = decodeURIComponent(qm[1]);
+    } catch (e) {}
+    if (q0) { if ($q) $q.value = q0; smartSearch(q0); }
+    else { if ($q) $q.value = '浦江'; smartSearch('浦江'); }
     currentMode = fromNet ? 'net' : 'local';
     updateModeUI();
   }
@@ -120,6 +132,45 @@
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (m) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]; }); }
+
+  // ============ 合并搜索：层级匹配工具 ============
+  // 5 个自治区全称→简称，保证“广西”能命中“广西壮族自治区”
+  var PROV_SHORT = { '内蒙古自治区': '内蒙古', '广西壮族自治区': '广西', '西藏自治区': '西藏', '宁夏回族自治区': '宁夏', '新疆维吾尔自治区': '新疆' };
+  // 去掉行政区划后缀，用于“金华”≈“金华市”这类等价比较
+  function stripSuffix(s) {
+    s = String(s || '');
+    if (PROV_SHORT[s]) return PROV_SHORT[s];
+    return s.replace(/(特别行政区|自治区|自治州|省|市|县|区|盟|旗|地区)$/, '');
+  }
+  // 输入与标准地名是否指向同一行政区（精确，或去后缀后相等；≥2字防误伤）
+  function suffixOf(s) {
+    var m = String(s || '').match(/(特别行政区|自治区|自治州|省|市|县|区|盟|旗|地区)$/);
+    return m ? m[1] : '';
+  }
+  function nameHit(input, name) {
+    if (!input || !name) return false;
+    if (name === input) return true;
+    var a = stripSuffix(input), b = stripSuffix(name);
+    if (a.length < 2 || a !== b) return false;
+    var si = suffixOf(input), sn = suffixOf(name);
+    if (si && sn && si !== sn) return false; // 后缀冲突：如“朝阳区”≠“朝阳市”
+    return true;
+  }
+  // 生成输入的候选变体（含常见后缀补全），供精确匹配
+  function genVariants(input) {
+    var base = String(input || '').replace(/\s+/g, '');
+    var seen = {}, out = [];
+    function push(v) { if (v && !seen[v]) { seen[v] = 1; out.push(v); } }
+    push(base);
+    var s = stripSuffix(base);
+    if (s && s !== base) { push(s); push(s + '市'); push(s + '县'); push(s + '区'); push(s + '省'); }
+    return out;
+  }
+  // 省/市名是否匹配大学的所在地（大学 city 带“市”后缀）
+  function placeHit(input, place) {
+    if (!input || !place) return false;
+    return stripSuffix(place) === stripSuffix(input) && stripSuffix(input).length >= 2;
+  }
   function telify(s) {
     if (!s) return '';
     return esc(s).replace(/(\d[\d\-\/ ]{5,})/g, function (m) {
@@ -355,6 +406,103 @@
     });
   }
 
+  // ===== 合并搜索：智能判断层级，一个入口同时返回地区与大学 =====
+  // 匹配规则：省(ADMIN顶层，含直辖市) > 市(cityNodes) > 区/县(countyNodes) > 大学(校名/别名)；
+  // 命中多个同名(重名/歧义)则列出候选(带省/市路径)；都不命中走全文回退(地区+大学混合)。
+  function smartSearch(input) {
+    var kw = (input || '').trim().replace(/\s+/g, '');
+    $detail.innerHTML = '';
+    if (!kw) { $cand.innerHTML = ''; return; }
+    var provHits = (ADMIN || []).filter(function (p) { return nameHit(kw, p.name); });
+    if (provHits.length) { showProvince(provHits[0].name); return; }
+
+    var cityHits = cityNodes.filter(function (n) { return nameHit(kw, n.name); });
+    if (cityHits.length === 1) { renderCityMerge(cityHits[0]); return; }
+    if (cityHits.length > 1) { renderChoiceList(cityHits, '市级'); return; }
+
+    var countyHits = countyNodes.filter(function (n) { return nameHit(kw, n.name); });
+    if (countyHits.length === 1) { renderDetail(countyHits[0]); return; }
+    if (countyHits.length > 1) { renderChoiceList(countyHits, '区/县级'); return; }
+
+    var uniHits = uniIdx.filter(function (u) {
+      return u.name.indexOf(kw) >= 0 || (u.aliases && u.aliases.some(function (a) { return a.indexOf(kw) >= 0; }));
+    });
+    if (uniHits.length === 1) { renderUniTo($detail, uniHits[0]); return; }
+    if (uniHits.length > 1) { renderUniChoiceList(uniHits); return; }
+
+    fullTextFallback(kw);
+  }
+
+  // 重名/歧义候选列表（同名多个地区）
+  function renderChoiceList(list, label) {
+    $cand.innerHTML = '';
+    list.forEach(function (n) {
+      var d = document.createElement('div'); d.className = 'cand-item';
+      d.innerHTML = '<span class="nm">' + esc(n.name) + '</span><span class="lv">' + esc(label) + '</span>' +
+        '<div class="pa">' + esc(n.province) + (n.city && n.city !== n.province ? ' ／ ' + esc(n.city) : '') + '</div>';
+      d.onclick = function () { if (n.level === 'city') renderCityMerge(n); else renderDetail(n); };
+      $cand.appendChild(d);
+    });
+    $detail.innerHTML = '<div class="empty">检测到多个同名“' + esc(list[0].name) + '”（' + esc(label) +
+      '），请点击上方具体的一个以查看。</div>';
+  }
+
+  // 大学多候选列表
+  function renderUniChoiceList(list) {
+    $cand.innerHTML = '';
+    list.forEach(function (u) {
+      var d = document.createElement('div'); d.className = 'cand-item';
+      var tag = u.type === 'vocational' ? '高职' : (u.type === 'chengren' ? '成人' : '本科');
+      d.innerHTML = '<span class="nm">' + esc(u.name) + '</span><span class="lv">' + tag + '</span>' +
+        (u.aliases && u.aliases.length ? '<span class="alttag">原：' + esc(u.aliases.join('、')) + '</span>' : '') +
+        '<div class="pa">' + esc(u.province) + ' ／ ' + esc(u.city) + '</div>';
+      d.onclick = function () { renderUniTo($detail, u); };
+      $cand.appendChild(d);
+    });
+    $detail.innerHTML = '';
+  }
+
+  // 全文回退：地区全文 + 大学混合候选
+  function fullTextFallback(kw) {
+    var k = kw.toLowerCase();
+    var rhits = nodes.filter(function (n) {
+      if (n.name.indexOf(kw) >= 0) return true;
+      if (n.province.indexOf(kw) >= 0) return true;
+      if (n.city && n.city.indexOf(kw) >= 0) return true;
+      var res = getDetail(n);
+      if (res && res.data) {
+        var d = res.data;
+        var hay = [d.fee, d.period, d.online, d.offline, d.note, d.medical, d.tax].join(' ');
+        if (hay.indexOf(kw) >= 0) return true;
+      }
+      return false;
+    }).slice(0, 20);
+    var uhits = uniIdx.filter(function (u) {
+      return u.name.indexOf(kw) >= 0 || u.key.indexOf(k) >= 0 ||
+        (u.aliases && u.aliases.some(function (a) { return a.indexOf(kw) >= 0; }));
+    }).slice(0, 15);
+    if (!rhits.length && !uhits.length) {
+      $cand.innerHTML = '<div class="empty">未找到与“' + esc(kw) + '”相关的地区或高校，可尝试更简短的关键词。</div>';
+      return;
+    }
+    $cand.innerHTML = '';
+    rhits.forEach(function (h) {
+      var d = document.createElement('div'); d.className = 'cand-item';
+      d.innerHTML = '<span class="nm">' + esc(h.name) + '</span><span class="lv">' + LV[h.level] + '</span>' +
+        '<div class="pa">' + esc(h.province) + (h.city && h.city !== h.province ? ' ／ ' + esc(h.city) : '') + '</div>';
+      d.onclick = function () { if (h.level === 'city') renderCityMerge(h); else renderDetail(h); };
+      $cand.appendChild(d);
+    });
+    uhits.forEach(function (u) {
+      var d = document.createElement('div'); d.className = 'cand-item';
+      var tag = u.type === 'vocational' ? '高职' : (u.type === 'chengren' ? '成人' : '本科');
+      d.innerHTML = '<span class="nm">' + esc(u.name) + '</span><span class="lv">' + tag + '</span>' +
+        '<div class="pa">' + esc(u.province) + ' ／ ' + esc(u.city) + '</div>';
+      d.onclick = function () { renderUniTo($detail, u); };
+      $cand.appendChild(d);
+    });
+  }
+
   function renderDetail(node) {
     $cand.innerHTML = '';
     var res = getDetail(node);
@@ -398,55 +546,142 @@
     $detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // ===== 合并搜索：节点定位与渲染辅助 =====
+  function findRegionNode(province, level, name) {
+    var arr = byName[name] || [];
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i].province === province && arr[i].level === level) return arr[i];
+    }
+    return arr[0] || null;
+  }
+  function uniByName(name) {
+    for (var i = 0; i < uniIdx.length; i++) { if (uniIdx[i].name === name) return uniIdx[i]; }
+    return null;
+  }
+  function uniRank(u) { return u.type === 'vocational' ? 1 : (u.type === 'chengren' ? 2 : 0); }
+  function renderUniItems(list, limit) {
+    var arr = list.slice().sort(function (a, b) { return uniRank(a) - uniRank(b) || (a.name < b.name ? -1 : 1); });
+    var shown = arr.slice(0, limit || 40), html = '';
+    shown.forEach(function (u) {
+      var tag = u.type === 'vocational' ? '高职' : (u.type === 'chengren' ? '成人' : '本科');
+      var cls = u.type === 'vocational' ? 'tv' : (u.type === 'chengren' ? 'tc' : 'tb');
+      html += '<div class="uni-item" data-un="' + esc(u.name) + '">' +
+        '<span class="un">' + esc(u.name) + '</span>' +
+        '<span class="ut ' + cls + '">' + tag + '</span>' +
+        '<span class="uc">' + esc(u.city) + '</span></div>';
+    });
+    if (arr.length > shown.length) html += '<div class="more-hint">共 ' + arr.length + ' 所，已显示前 ' + shown.length + ' 所；输入完整校名可精确定位。</div>';
+    return html;
+  }
+  function regionChip(province, level, name, sub, has) {
+    return '<div class="region-chip" data-rp="' + esc(province) + '" data-rl="' + level + '" data-rn="' + esc(name) + '">' +
+      '<span class="rn">' + esc(name) + '</span>' +
+      '<span class="rt ' + (has ? 'has' : 'none') + '">' + esc(sub) + '</span></div>';
+  }
+  function bindMergeClicks(container) {
+    Array.prototype.forEach.call(container.querySelectorAll('.region-chip'), function (el) {
+      el.onclick = function () {
+        var node = findRegionNode(el.getAttribute('data-rp'), el.getAttribute('data-rl'), el.getAttribute('data-rn'));
+        if (node) { if (node.level === 'city') renderCityMerge(node); else renderDetail(node); }
+      };
+    });
+    Array.prototype.forEach.call(container.querySelectorAll('.uni-item'), function (el) {
+      el.onclick = function () { var u = uniByName(el.getAttribute('data-un')); if (u) renderUniTo($detail, u); };
+    });
+  }
+  function standardShareRows(d, name, ancestors) {
+    return [
+      { k: '医保咨询', v: d.medical || '—' },
+      { k: '税务缴费', v: d.tax || '—' },
+      { k: '2027个人缴费', v: d.fee || '—' },
+      { k: '缴费时间', v: d.period || '—' },
+      { k: '线上缴费', v: d.online || '—' },
+      { k: '线下渠道', v: d.offline || '—' },
+      { k: '备注', v: d.note || '—' },
+      { k: '资助参保对象', v: getSubsidy({ name: name, ancestors: ancestors || [] }) }
+    ];
+  }
+  function standardBody(d, name, ancestors) {
+    var html = '';
+    html += countdownHtml(d.period);
+    html += row('医保咨询', d.medical, true);
+    html += row('税务缴费', d.tax, true);
+    html += row('2027个人缴费', d.fee);
+    html += row('缴费时间', d.period);
+    html += row('线上缴费', d.online);
+    html += row('线下渠道', d.offline);
+    html += row('备注', d.note);
+    html += row('资助参保对象', getSubsidy({ name: name, ancestors: ancestors || [] }));
+    html += '<button class="share-btn">📤 生成分享图（PNG）</button>';
+    html += '<div class="src">数据来源：' + esc(d.source || '各地医保局/税务局公开通告') + '</div>';
+    html += DISCLAIMER;
+    return html;
+  }
+
+  // 省级聚合：省/直辖市通用标准 + 下辖地区 chips + 省内大学
   function showProvince(pname) {
     $cand.innerHTML = '';
     var prov = (ADMIN || []).filter(function (p) { return p.name === pname; })[0];
     if (!prov) return;
     var res = REAL[pname];
+    var isMuni = !!MUNI[pname];
+    var children = prov.children || [];
+    var univs = uniIdx.filter(function (u) { return u.province === pname; });
     var html = '';
-    html += '<div class="detail"><div class="head"><div class="t">' + esc(pname) + '（全省/市通用）</div>' +
-      '<div class="s">省级征缴总览</div></div>';
+    html += '<div class="detail"><div class="head"><div class="t">' + esc(pname) + '</div>' +
+      '<div class="s">' + (isMuni ? '直辖市' : '省级') + ' · 下辖地区 + 在校大学</div></div>';
     if (res) {
-      html += countdownHtml(res.period);
-      html += row('医保咨询', res.medical, true);
-      html += row('税务缴费', res.tax, true);
-      html += row('2027个人缴费', res.fee);
-      html += row('缴费时间', res.period);
-      html += row('线上缴费', res.online);
-      html += row('线下渠道', res.offline);
-      html += row('备注', res.note);
-      html += row('资助参保对象', getSubsidy({ name: pname, ancestors: [] }));
-      html += '<button class="share-btn">📤 生成分享图（PNG）</button>';
-      html += '<div class="src">数据来源：' + esc(res.source || '各地医保局/税务局公开通告') + '</div>';
-      html += DISCLAIMER;
+      html += standardBody(res, pname, []);
+    } else {
+      html += '<div class="empty">该' + (isMuni ? '市' : '省') + '暂无统一征缴标准，请进入下辖地区查看。</div>';
     }
-    var cities = (prov.children || []);
-    html += '<div style="padding:12px 16px;border-top:1px solid var(--line)"><div class="k" style="font-weight:700;color:var(--brand-d)">下辖地区（点击查看/继承标准）：</div><div class="city-list">';
-    cities.forEach(function (c) {
+    html += '<div class="merge-sec">' + (isMuni ? '下辖' : '下辖市级') + '地区（' + children.length + '）</div><div class="merge-grid">';
+    children.forEach(function (c) {
       var cnt = (c.children || []).length;
-      html += '<div class="city-chip" data-c="' + esc(c.name) + '">' + esc(c.name) +
-        '<span class="cnt">' + (cnt ? cnt + '个区县' : '市直') + '</span></div>';
+      var fn = findRegionNode(pname, isMuni ? 'county' : 'city', c.name);
+      var has = !!(fn && REAL[fn.name]);
+      html += regionChip(pname, isMuni ? 'county' : 'city', c.name, has ? '有标准' : (cnt ? cnt + '个区县' : '看上级'), has);
     });
-    html += '</div></div></div>';
+    html += '</div>';
+    html += '<div class="merge-sec">省内大学（' + univs.length + '）</div>';
+    html += univs.length ? ('<div class="uni-list">' + renderUniItems(univs, 40) + '</div>') : '<div class="empty">暂无收录的省内高校。</div>';
+    html += '</div>';
     $detail.innerHTML = html;
-    var pShareRows = res ? [
-      { k: '医保咨询', v: res.medical || '—' },
-      { k: '税务缴费', v: res.tax || '—' },
-      { k: '2027个人缴费', v: res.fee || '—' },
-      { k: '缴费时间', v: res.period || '—' },
-      { k: '线上缴费', v: res.online || '—' },
-      { k: '线下渠道', v: res.offline || '—' },
-      { k: '备注', v: res.note || '—' },
-      { k: '资助参保对象', v: getSubsidy({ name: pname, ancestors: [] }) }
-    ] : [];
-    attachShare($detail, buildSharePayload(pname + '（全省/市通用）', '省级征缴总览', pShareRows, res ? res.period : '', res ? res.source : ''));
-    Array.prototype.forEach.call($detail.querySelectorAll('.city-chip'), function (chip) {
-      chip.onclick = function () {
-        var name = chip.getAttribute('data-c');
-        var node = (byName[name] || [])[0];
-        if (node) renderDetail(node);
-      };
+    if (res) attachShare($detail, buildSharePayload(pname + (isMuni ? '（直辖市）' : '（全省/市通用）'), (isMuni ? '直辖市' : '省级') + '征缴总览', standardShareRows(res, pname, []), res.period, res.source));
+    bindMergeClicks($detail);
+    $detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // 市级聚合：市标准 + 下辖区县 chips + 市内大学
+  function renderCityMerge(node) {
+    $cand.innerHTML = '';
+    var cityName = node.name;
+    var cityRes = resolveReal(cityName);
+    var data = cityRes || REAL[node.province] || null;
+    var inherited = !cityRes;
+    var counties = countyNodes.filter(function (c) { return c.province === node.province && c.city === cityName; });
+    var univs = uniIdx.filter(function (u) { return placeHit(u.city, cityName); });
+    var html = '';
+    html += '<div class="detail"><div class="head"><div class="t">' + esc(cityName) + '</div>' +
+      '<div class="s">市级 · 下辖区县 + 在校大学 ｜ ' + esc(node.province) + '</div></div>';
+    if (data) {
+      if (inherited) html += '<div class="inherit">该市未单独发布通告，以下为【' + esc(node.province) + '】统一标准，具体以当地最新通告为准。</div>';
+      html += standardBody(data, cityName, [node.province]);
+    } else {
+      html += '<div class="empty">暂无该市及所属省统一标准，请进入下辖区县查看。</div>';
+    }
+    html += '<div class="merge-sec">下辖县级地区（' + counties.length + '）</div><div class="merge-grid">';
+    counties.forEach(function (c) {
+      var has = !!REAL[c.name];
+      html += regionChip(c.province, 'county', c.name, has ? '有标准' : '看上级', has);
     });
+    html += '</div>';
+    html += '<div class="merge-sec">市内大学（' + univs.length + '）</div>';
+    html += univs.length ? ('<div class="uni-list">' + renderUniItems(univs, 60) + '</div>') : '<div class="empty">暂无收录的市内高校。</div>';
+    html += '</div>';
+    $detail.innerHTML = html;
+    if (data) attachShare($detail, buildSharePayload(cityName + (inherited ? '（沿用' + node.province + '）' : ''), '市级 · ' + node.province, standardShareRows(data, cityName, [node.province]), data.period, data.source));
+    bindMergeClicks($detail);
     $detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -482,8 +717,8 @@
     });
   }
 
-  function renderUni(u) {
-    $ucand.innerHTML = '';
+  function renderUni(u) { $ucand.innerHTML = ''; renderUniTo($udetail, u); }
+  function renderUniTo(container, u) {
     var provReal = REAL[u.province] || null;
     var cityReal = resolveReal(u.city);
     var feeObj = UNI_FEE[u.city];
@@ -499,7 +734,7 @@
     } else if (provReal) {
       fee = uniSeg(provReal.fee) || provReal.fee; period = provReal.period; online = provReal.online; note = provReal.note; source = provReal.source; provFallback = true;
     }
-    if (!fee) { $udetail.innerHTML = '<div class="empty">暂未收录该校所在地（' + esc(u.city) + '）的大学生医保标准。</div>'; return; }
+    if (!fee) { container.innerHTML = '<div class="empty">暂未收录该校所在地（' + esc(u.city) + '）的大学生医保标准。</div>'; return; }
 
     var phone = (cityReal && cityReal.medical) || (provReal && provReal.medical) || '';
     var tax = (cityReal && cityReal.tax) || (provReal && provReal.tax) || '';
@@ -532,7 +767,7 @@
     html += '<div class="src">数据来源：' + esc(source || '各地医保局/税务局/高校官网公开通告') + '</div>';
     html += DISCLAIMER;
     html += '</div>';
-    $udetail.innerHTML = html;
+    container.innerHTML = html;
     var uShareRows = [
       { k: '办学层次', v: level },
       { k: '医保咨询', v: phone || '—' },
@@ -543,8 +778,8 @@
       { k: '备注', v: note || '—' },
       { k: '资助参保对象', v: getSubsidy({ name: u.city, ancestors: [u.province] }) }
     ];
-    attachShare($udetail, buildSharePayload(u.name, level + '·在校学生医保 ｜ ' + u.province + ' ／ ' + u.city, uShareRows, period, source));
-    $udetail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    attachShare(container, buildSharePayload(u.name, level + '·在校学生医保 ｜ ' + u.province + ' ／ ' + u.city, uShareRows, period, source));
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // ===== 页签切换 =====
@@ -554,9 +789,9 @@
   var $uniPanel = document.getElementById('uniPanel');
 
   function bindEvents() {
-    document.getElementById('go').onclick = function () { showCandidates($q.value); };
-    $q.addEventListener('input', function () { showCandidates($q.value); });
-    $q.addEventListener('keydown', function (e) { if (e.key === 'Enter') showCandidates($q.value); });
+    document.getElementById('go').onclick = function () { smartSearch($q.value); };
+    $q.addEventListener('input', function () { smartSearch($q.value); });
+    $q.addEventListener('keydown', function (e) { if (e.key === 'Enter') smartSearch($q.value); });
 
     document.getElementById('ugo').onclick = function () { showUniCandidates($uq.value); };
     $uq.addEventListener('input', function () { showUniCandidates($uq.value); });

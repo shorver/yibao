@@ -116,3 +116,26 @@ header .disclaimer{font-size:13px;opacity:.95;margin:8px 0 0;line-height:1.5;
 .foot .about p{margin:2px 0}
 .foot a{color:var(--brand);text-decoration:none;font-weight:600}
 
+/* 合并搜索结果（省/市级聚合：地区 chips + 大学列表） */
+.merge-sec{font-size:16px;font-weight:800;color:var(--brand-d);padding:14px 16px 8px;border-top:1px solid var(--line);margin-top:4px}
+.merge-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 12px}
+@media(max-width:560px){.merge-grid{grid-template-columns:1fr}}
+.region-chip{border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 13px;cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center;font-size:16px;gap:8px}
+.region-chip:hover{border-color:var(--brand)}
+.region-chip .rn{font-weight:700}
+.region-chip .rt{font-size:12px;border-radius:4px;padding:1px 7px;white-space:nowrap}
+.region-chip .rt.has{color:#0a7d3e;background:#eafaf0;border:1px solid #bfe6cc}
+.region-chip .rt.none{color:var(--sub);background:#f1f3f5;border:1px solid var(--line)}
+.uni-list{display:flex;flex-direction:column;gap:6px;padding:0 16px 14px}
+.uni-item{border:1px solid var(--line);background:#fff;border-radius:9px;padding:10px 12px;cursor:pointer;
+  display:flex;align-items:center;gap:8px;font-size:15px}
+.uni-item:hover{border-color:var(--brand)}
+.uni-item .un{font-weight:700;flex:1}
+.uni-item .ut{font-size:12px;border-radius:4px;padding:1px 7px;color:#fff;white-space:nowrap}
+.uni-item .ut.tb{background:var(--brand)}
+.uni-item .ut.tv{background:#7a5cc7}
+.uni-item .ut.tc{background:#8a8f96}
+.uni-item .uc{font-size:13px;color:var(--sub);white-space:nowrap}
+.more-hint{font-size:13px;color:var(--sub);padding:6px 2px}
+

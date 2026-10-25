@@ -1,0 +1,13 @@
+# GitCode Pages 部署配置（GitLab CI 风格）
+# 作用：把仓库根目录的网站运行时文件归置到 public/，供 Pages 服务发布
+pages:
+  stage: deploy
+  script:
+    - mkdir -p public
+    - cp index.html app.js style.css data.json public/
+    - cp -r icon public/ 2>/dev/null || true
+  artifacts:
+    paths:
+      - public
+  only:
+    - master

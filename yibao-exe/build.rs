@@ -57,6 +57,7 @@ fn main() {
 
     let status = Command::new(&rc)
         .args([
+            "/c", "936", // icon.rc 为 GBK(936)，显式指定 NLS 转换代码页，避免版本资源中文变「锟斤拷」
             "/fo",
             &res.to_string_lossy().replace('/', "\\"),
             &std::env::current_dir()

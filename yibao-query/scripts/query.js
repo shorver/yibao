@@ -153,6 +153,12 @@ function typeLabel(t) {
   return { '': '(本科)', benke: '(本科)', vocational: '(高职/专科)', chengren: '(成人高校)' }[t] || '(本科)';
 }
 
+function insuranceText(d) {
+  if (!d || !d.insurance || !d.insurance.length) return '';
+  return d.insurance.map(function (it) {
+    return it.name + '：' + it.fee + '；' + it.period + '；' + it.desc;
+  }).join(' ｜ ');
+}
 function renderRegion(res) {
   const d = res.data;
   let out = '';
@@ -165,6 +171,8 @@ function renderRegion(res) {
   out += field('线上缴费方式', d.online);
   out += field('线下缴费方式', d.offline);
   out += field('资助参保对象', regionSubsidy(res));
+  const __ix = insuranceText(d);
+  if (__ix) out += field('补充保险', __ix);
   out += field('备注', d.note);
   out += field('数据来源', (d.source || '各地医保局/税务局公开通告'));
   return out;
@@ -186,6 +194,8 @@ function renderUniv(res) {
     out += field('征缴期', d.period);
     out += field('参保/缴费方式', d.online);
     out += field('资助参保对象', subsidyOf([u.city, u.province]));
+    const __ix = insuranceText(d);
+    if (__ix) out += field('补充保险', __ix);
     out += field('备注', d.note);
     out += field('数据来源', (d.source || '各地医保局/税务局/高校官网公开通告'));
     if (f.fallback) out += '（说明：未单列独立的大学生专项通告，下列为所在地市城乡居民医保标准，若当地有在校学生专门档已一并列出，实际以学校通知为准）\n';

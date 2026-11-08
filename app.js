@@ -523,6 +523,7 @@
     html += row('线上缴费', d.online);
     html += row('线下渠道', d.offline);
     html += row('备注', d.note);
+    if (d.insurance && d.insurance.length) html += row('补充保险', insuranceText(d));
     html += row('资助参保对象', getSubsidy(node));
     html += '<button class="share-btn">📤 生成分享图（PNG）</button>';
     html += '<div class="src">数据来源：' + esc(d.source || '各地医保局/税务局公开通告') + '</div>';
@@ -537,6 +538,7 @@
       { k: '线上缴费', v: d.online || '—' },
       { k: '线下渠道', v: d.offline || '—' },
       { k: '备注', v: d.note || '—' },
+      { k: '补充保险', v: insuranceText(d) || '—' },
       { k: '资助参保对象', v: getSubsidy(node) }
     ];
     attachShare($detail, buildSharePayload(
@@ -589,6 +591,14 @@
       el.onclick = function () { var u = uniByName(el.getAttribute('data-un')); if (u) renderUniTo($detail, u); };
     });
   }
+
+// 补充商业保险（每节点 insurance 数组）
+function insuranceText(d) {
+  if (!d || !d.insurance || !d.insurance.length) return '';
+  return d.insurance.map(function (it) {
+    return it.name + '：' + it.fee + '；' + it.period + '；' + it.desc;
+  }).join(' ｜ ');
+}
   function standardShareRows(d, name, ancestors) {
     return [
       { k: '医保咨询', v: d.medical || '—' },
@@ -598,6 +608,7 @@
       { k: '线上缴费', v: d.online || '—' },
       { k: '线下渠道', v: d.offline || '—' },
       { k: '备注', v: d.note || '—' },
+      { k: '补充保险', v: insuranceText(d) || '—' },
       { k: '资助参保对象', v: getSubsidy({ name: name, ancestors: ancestors || [] }) }
     ];
   }
@@ -611,6 +622,7 @@
     html += row('线上缴费', d.online);
     html += row('线下渠道', d.offline);
     html += row('备注', d.note);
+    if (d.insurance && d.insurance.length) html += row('补充保险', insuranceText(d));
     html += row('资助参保对象', getSubsidy({ name: name, ancestors: ancestors || [] }));
     html += '<button class="share-btn">📤 生成分享图（PNG）</button>';
     html += '<div class="src">数据来源：' + esc(d.source || '各地医保局/税务局公开通告') + '</div>';

@@ -59,3 +59,4 @@ v1.0.0（2026-10-24 创建）
 - GitCode：https://gitcode.net/shorver/yibao
 - AtomGit：https://atomgit.com/shorver/yibao
 - CNB：https://cnb.cool/shorver/yibao
+v1.0.7（2026年11月8日 更新热线口径、补齐惠民保数据）

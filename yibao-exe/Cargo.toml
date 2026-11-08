@@ -1,6 +1,6 @@
 [package]
 name = "yibao"
-version = "1.0.6"
+version = "1.0.7"
 edition = "2021"
 description = "蚂蚁哥医保查询 - 2027年度城乡居民医保征缴信息（原生 GUI 单文件版）"
 authors = ["浦江蚂蚁哥 <shorver@163.com>"]

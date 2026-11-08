@@ -1,4 +1,4 @@
-// 蚂蚁哥医保查询 v1.0.6 — 原生 GUI 单文件版（Rust + egui）
+// 蚂蚁哥医保查询 v1.0.7 — 原生 GUI 单文件版（Rust + egui）
 // 数据与检索逻辑完整移植自网页版 app.js（智能搜索 / 层级判定 / 重名候选 /
 // 全文回退 / 缴费截止倒计时 / 资助参保对象继承 / 大学生医保标准解析）。
 // 全部资源（data.json 与图标）编译期内嵌，双击即用，不弹浏览器、不依赖网络。
@@ -13,7 +13,7 @@ use eframe::egui;
 use regex::Regex;
 use serde_json::{Map, Value};
 
-const VERSION: &str = "1.0.6";
+const VERSION: &str = "1.0.7";
 const APP_NAME: &str = "蚂蚁哥医保查询";
 static DATA_JSON: &[u8] = include_bytes!("../assets/data.json");
 static LOGO_PNG: &[u8] = include_bytes!("../assets/icon/icon_256.png");

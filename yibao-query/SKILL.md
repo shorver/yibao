@@ -13,7 +13,7 @@ examples_en:
   - "How much is residents medical insurance in Jinhua for 2027"
   - "What is the medical insurance hotline for Pujiang County"
   - "How do Zhejiang University students pay medical insurance"
-version: 1.0.6
+version: 1.0.7
 author: 浦江蚂蚁哥
 agent_created: true
 ---
@@ -26,7 +26,7 @@ agent_created: true
 ## 何时使用
 - 用户问「XX 市/县/区 医保怎么缴」「XX 居民医保多少钱」「XX 医保电话」「XX 医保什么时候交」
 - 用户问「XX 大学 学生医保」「大学生医保标准」
-- 用户问全国通用缴费方式（微信/支付宝/电子税务局/12393 等）
+- 用户问全国通用缴费方式（微信/支付宝/电子税务局/12345 等）
 
 ## 使用方法
 调用本 skill 的查询脚本（Node.js，纯本地数据，无需联网）：

@@ -9,7 +9,6 @@ UTF8_FILES = [
     'index.html',
     'yibao-exe/assets/index.html',
     'yibao-exe/Cargo.toml',
-    'yibao-exe/Cargo.lock',
     'yibao-exe/src/main.rs',
     'yibao-query/SKILL.md',
     'build_offline.js',
@@ -32,6 +31,16 @@ for rel in UTF8_FILES + GBK_FILES:
     s2 = bump(s)
     io.open(p, 'w', encoding=enc, newline='').write(s2)
     print('%s: 替换 %d 处 (%s)' % (rel, n, enc))
+
+# Cargo.lock 不能全局替换：依赖里有 thiserror 1.0.69、same-file 1.0.6 等，
+# 全局 replace('1.0.6','1.0.7') 会把它们误改成 1.0.79 / 1.0.7。只改 yibao 自身那一行。
+p = os.path.join(ROOT, 'yibao-exe/Cargo.lock')
+s = io.open(p, encoding='utf-8').read()
+old = 'name = "yibao"\nversion = "1.0.6"'
+new = 'name = "yibao"\nversion = "1.0.7"'
+if old in s:
+    io.open(p, 'w', encoding='utf-8', newline='').write(s.replace(old, new, 1))
+    print('yibao-exe/Cargo.lock: 精确更新 1 处（依赖版本未动）')
 
 # 额外：data.js 文件头注释的更新时间
 p = os.path.join(ROOT, 'data.js')
